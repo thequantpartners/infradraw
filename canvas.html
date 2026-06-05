@@ -57,6 +57,10 @@
   .empty-hint { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: var(--muted); font-size: 15px; }
   .badge-connect { position: absolute; top: 12px; right: 12px; z-index: 4; background: rgba(79,140,255,.15); border: 1px solid var(--accent); color: var(--accent); padding: 7px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; }
   .edit-input { width: 100%; height: 100%; border: none; outline: none; background: #fff; color: #111; font-size: 13px; font-weight: 600; border-radius: 4px; padding: 0 6px; font-family: inherit; }
+  .export-wrap { position: relative; }
+  .export-menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 5px; z-index: 50; min-width: 170px; box-shadow: 0 8px 24px rgba(0,0,0,.55); }
+  .export-menu .btn { width: 100%; justify-content: flex-start; margin-bottom: 3px; }
+  .export-menu .btn:last-child { margin-bottom: 0; }
 </style>
 </head>
 <body>
@@ -131,6 +135,7 @@ function App() {
   var [editingId,setEditingId]=useState(null); var [editingAreaId,setEditingAreaId]=useState(null); var [editingNoteId,setEditingNoteId]=useState(null);
   var [cursorWorld,setCursorWorld]=useState(null);
   var [undoCount,setUndoCount]=useState(0);
+  var [showExportMenu,setShowExportMenu]=useState(false);
   // Project state
   var [projectId,setProjectId]=useState(null);
   var [projectName,setProjectName]=useState('Sin nombre');
@@ -214,6 +219,14 @@ function App() {
     return function(){clearTimeout(t);};
   },[saveStatus]);
 
+  // Close export menu on click outside
+  useEffect(function(){
+    if(!showExportMenu)return;
+    function handler(){setShowExportMenu(false);}
+    window.addEventListener('click',handler);
+    return function(){window.removeEventListener('click',handler);};
+  },[showExportMenu]);
+
   // ---- Canvas item factories ----
   function addNodeAt(type,wx,wy){
     if(!SERVICES[type])return;
@@ -246,7 +259,102 @@ function App() {
   function cycleNoteColor(id){pushHistory();setNotes(function(p){return p.map(function(n){return n.id===id?Object.assign({},n,{colorIdx:((n.colorIdx||0)+1)%NOTE_COLORS.length}):n;});});}
 
   // ---- Export / Import ----
-  function exportDiagram(){var data=JSON.stringify({version:1,nodes,areas,notes,conns,transform},null,2);var blob=new Blob([data],{type:'application/json'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='infradraw-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
+  function exportJSON(){var data=JSON.stringify({version:1,nodes,areas,notes,conns,transform},null,2);var blob=new Blob([data],{type:'application/json'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='infradraw-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
+
+  function exportPNG(){
+    var allN=nodesRef.current,allA=areasRef.current,allNt=notesRef.current,allC=connsRef.current;
+    if(!allN.length&&!allA.length&&!allNt.length){alert('El canvas está vacío. Agrega elementos para exportar.');return;}
+    var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    allN.forEach(function(n){minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);maxX=Math.max(maxX,n.x+NODE_W);maxY=Math.max(maxY,n.y+NODE_H);});
+    allA.forEach(function(a){minX=Math.min(minX,a.x);minY=Math.min(minY,a.y);maxX=Math.max(maxX,a.x+a.w);maxY=Math.max(maxY,a.y+a.h);});
+    allNt.forEach(function(nt){minX=Math.min(minX,nt.x);minY=Math.min(minY,nt.y);maxX=Math.max(maxX,nt.x+nt.w);maxY=Math.max(maxY,nt.y+nt.h);});
+    var pad=72,vbX=minX-pad,vbY=minY-pad,vbW=maxX-minX+pad*2,vbH=maxY-minY+pad*2;
+    var sc=2,maxPx=4096,ratio=Math.min(1,maxPx/(vbW*sc),maxPx/(vbH*sc));
+    var outW=Math.round(vbW*sc*ratio),outH=Math.round(vbH*sc*ratio);
+    function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    var nodeById={};allN.forEach(function(n){nodeById[n.id]=n;});
+    var sv=[];
+    sv.push('<svg xmlns="http://www.w3.org/2000/svg" width="'+vbW+'" height="'+vbH+'" viewBox="'+vbX+' '+vbY+' '+vbW+' '+vbH+'">');
+    sv.push('<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7689"/></marker>');
+    sv.push('<pattern id="gr" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1b2230" stroke-width="1"/></pattern></defs>');
+    sv.push('<rect x="'+vbX+'" y="'+vbY+'" width="'+vbW+'" height="'+vbH+'" fill="#0d1117"/>');
+    sv.push('<rect x="'+vbX+'" y="'+vbY+'" width="'+vbW+'" height="'+vbH+'" fill="url(#gr)"/>');
+    // Areas
+    allA.forEach(function(a){
+      var def=AREA_TYPES[a.type];if(!def)return;
+      var sw=2,dash=def.dash?'stroke-dasharray="'+def.dash+'"':'';
+      sv.push('<g transform="translate('+a.x+','+a.y+')">');
+      sv.push('<rect width="'+a.w+'" height="'+a.h+'" rx="12" fill="'+def.fill+'" stroke="'+def.color+'" stroke-width="'+sw+'" '+dash+'/>');
+      sv.push('<rect x="'+sw+'" y="'+sw+'" width="'+(a.w-sw*2)+'" height="28" rx="10" fill="'+def.color+'" opacity="0.18"/>');
+      sv.push('<rect x="'+sw+'" y="18" width="'+(a.w-sw*2)+'" height="12" fill="'+def.color+'" opacity="0.18"/>');
+      sv.push('<text x="14" y="22" font-size="14" dominant-baseline="middle">'+def.icon+'</text>');
+      sv.push('<text x="36" y="20" fill="'+def.color+'" font-size="13" font-weight="700" font-family="system-ui,sans-serif">'+esc(a.label)+'</text>');
+      sv.push('</g>');
+    });
+    // Connections
+    allC.forEach(function(c){
+      var a=nodeById[c.from],b=nodeById[c.to];if(!a||!b)return;
+      var p1=edgePoint(a.x+NODE_W/2,a.y+NODE_H/2,b.x+NODE_W/2,b.y+NODE_H/2,NODE_W/2,NODE_H/2);
+      var p2=edgePoint(b.x+NODE_W/2,b.y+NODE_H/2,a.x+NODE_W/2,a.y+NODE_H/2,NODE_W/2,NODE_H/2);
+      sv.push('<line x1="'+p1[0]+'" y1="'+p1[1]+'" x2="'+p2[0]+'" y2="'+p2[1]+'" stroke="#6b7689" stroke-width="2" marker-end="url(#arr)"/>');
+    });
+    // Notes (native SVG, no foreignObject)
+    var hH=26;
+    allNt.forEach(function(nt){
+      var c=NOTE_COLORS[nt.colorIdx||0];
+      sv.push('<g transform="translate('+nt.x+','+nt.y+')">');
+      sv.push('<rect x="2" y="3" width="'+nt.w+'" height="'+nt.h+'" rx="8" fill="rgba(0,0,0,0.25)"/>');
+      sv.push('<rect width="'+nt.w+'" height="'+nt.h+'" rx="8" fill="'+c.bg+'" stroke="'+c.border+'" stroke-width="1.5"/>');
+      sv.push('<rect x="0" y="0" width="'+nt.w+'" height="'+hH+'" rx="8" fill="'+c.header+'"/>');
+      sv.push('<rect x="0" y="'+(hH-8)+'" width="'+nt.w+'" height="8" fill="'+c.header+'"/>');
+      sv.push('<text x="10" y="'+(hH/2+1)+'" font-size="12" dominant-baseline="middle">📝</text>');
+      sv.push('<text x="26" y="'+(hH/2+1)+'" font-size="11" fill="'+c.text+'" font-weight="700" dominant-baseline="middle" font-family="system-ui,sans-serif">Nota</text>');
+      if(nt.text){
+        var lines=nt.text.split('\n'),fs=11,tx=8,ty=hH+4+fs,lh=fs*1.6;
+        sv.push('<text x="'+tx+'" y="'+ty+'" font-size="'+fs+'" fill="'+c.text+'" font-family="system-ui,sans-serif">');
+        lines.forEach(function(ln,i){if(i===0)sv.push(esc(ln));else sv.push('<tspan x="'+tx+'" dy="'+lh+'">'+esc(ln)+'</tspan>');});
+        sv.push('</text>');
+      }
+      sv.push('</g>');
+    });
+    // Nodes
+    allN.forEach(function(n){
+      var def=SERVICES[n.type];if(!def)return;
+      sv.push('<g transform="translate('+n.x+','+n.y+')">');
+      sv.push('<rect width="'+NODE_W+'" height="'+NODE_H+'" rx="12" fill="#1c2230" stroke="#2a3343" stroke-width="1.5"/>');
+      sv.push('<rect x="0" y="0" width="5" height="'+NODE_H+'" rx="2.5" fill="'+def.color+'"/>');
+      sv.push('<rect x="12" y="'+(NODE_H/2-14)+'" width="28" height="28" rx="7" fill="'+def.color+'" opacity="0.22"/>');
+      sv.push('<text x="26" y="'+(NODE_H/2+6)+'" font-size="16" text-anchor="middle">'+def.icon+'</text>');
+      sv.push('<text x="44" y="'+(NODE_H/2+5)+'" fill="#e6edf3" font-size="13" font-weight="600" font-family="system-ui,sans-serif">'+esc(n.label)+'</text>');
+      sv.push('</g>');
+    });
+    // Watermark
+    var wmX=vbX+vbW-14,wmY=vbY+vbH-14;
+    sv.push('<rect x="'+(wmX-126)+'" y="'+(wmY-24)+'" width="126" height="24" rx="7" fill="rgba(13,17,23,0.88)"/>');
+    sv.push('<text x="'+(wmX-8)+'" y="'+(wmY-6)+'" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#4f8cff" text-anchor="end">◈ InfraDraw</text>');
+    sv.push('</svg>');
+    var svgStr=sv.join('');
+    var blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var img=new Image();
+    img.onload=function(){
+      var cv=document.createElement('canvas');
+      cv.width=outW;cv.height=outH;
+      var ctx=cv.getContext('2d');
+      ctx.scale(outW/vbW,outH/vbH);
+      ctx.drawImage(img,0,0);
+      URL.revokeObjectURL(url);
+      try{
+        var lnk=document.createElement('a');
+        lnk.download='infradraw-'+new Date().toISOString().slice(0,10)+'.png';
+        lnk.href=cv.toDataURL('image/png');
+        document.body.appendChild(lnk);lnk.click();document.body.removeChild(lnk);
+      }catch(e){alert('Error al exportar PNG: '+e.message);}
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);alert('No se pudo generar la imagen. Intenta con JSON.');};
+    img.src=url;
+  }
+
   function importDiagram(){fileInputRef.current.value='';fileInputRef.current.click();}
   function onFileChange(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){try{var d=JSON.parse(ev.target.result);if(!d.version)throw new Error('Formato no reconocido');pushHistory();if(Array.isArray(d.nodes))setNodes(d.nodes);if(Array.isArray(d.areas))setAreas(d.areas);if(Array.isArray(d.notes))setNotes(d.notes);if(Array.isArray(d.conns))setConns(d.conns);if(d.transform)setTransform(d.transform);clearSelection();}catch(err){alert('Error al importar: '+err.message);}};reader.readAsText(file);}
 
@@ -363,7 +471,13 @@ function App() {
     h('button',{key:'zi',className:'btn',onClick:function(){zoomBy(1.2);}},'+'),
     h('button',{key:'rv',className:'btn',onClick:fitToScreen},'⊡ Encuadrar'),
     h('div',{key:'s3',className:'btn-sep'}),
-    h('button',{key:'exp',className:'btn',onClick:exportDiagram},'📤 Exportar'),
+    h('div',{key:'expW',className:'export-wrap',onClick:function(e){e.stopPropagation();}},[
+      h('button',{key:'exp',className:'btn',onClick:function(){setShowExportMenu(function(v){return !v;});}},['📤 Exportar',' ▾']),
+      showExportMenu?h('div',{key:'menu',className:'export-menu'},[
+        h('button',{key:'j',className:'btn',onClick:function(){setShowExportMenu(false);exportJSON();}},'📄 Descargar JSON'),
+        h('button',{key:'p',className:'btn',onClick:function(){setShowExportMenu(false);exportPNG();}},'🖼️ Exportar PNG'),
+      ]):null
+    ]),
     h('button',{key:'imp',className:'btn',onClick:importDiagram},'📥 Importar'),
   ]);
 
