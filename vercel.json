@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/canvas", "destination": "/canvas.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
