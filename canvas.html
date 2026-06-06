@@ -94,13 +94,56 @@ var SERVICES = {
   wireguard:    { label:"WireGuard",       icon:"🔐", color:"#88171A" },
   internet:     { label:"Internet / User", icon:"🌍", color:"#475569" },
   smtp:         { label:"SMTP / Email",    icon:"📧", color:"#059669" },
-  cicd:         { label:"CI/CD Pipeline",  icon:"🚀", color:"#2088FF" }
+  cicd:         { label:"CI/CD Pipeline",  icon:"🚀", color:"#2088FF" },
+
+  // Compute & Orquestación
+  swarm:        { label:"Docker Swarm",        icon:"🐝", color:"#1D63ED" },
+  k3s:          { label:"K3s",                 icon:"☸️", color:"#FFA500" },
+
+  // Storage
+  r2:           { label:"Cloudflare R2",        icon:"🪣", color:"#F38020" },
+  backblaze:    { label:"Backblaze B2",          icon:"🧊", color:"#E02222" },
+  hetzner_os:   { label:"Hetzner Object Store",  icon:"📦", color:"#D50C2D" },
+
+  // Seguridad
+  vault:        { label:"HashiCorp Vault",       icon:"🔒", color:"#FFCD00" },
+  authentik:    { label:"Authentik",             icon:"🛡️", color:"#fd4b2d" },
+  crowdsec:     { label:"CrowdSec",              icon:"🚨", color:"#2B65EC" },
+  waf:          { label:"Cloudflare WAF",         icon:"🧱", color:"#F38020" },
+  trivy:        { label:"Trivy",                 icon:"🔍", color:"#1904DA" },
+
+  // Mensajería & Workflows
+  nats:         { label:"NATS.io",               icon:"📡", color:"#27AAE1" },
+  temporal:     { label:"Temporal.io",            icon:"⏱️", color:"#141414" },
+  redpanda:     { label:"Redpanda",              icon:"🐼", color:"#E6353B" },
+
+  // DB & Search
+  meilisearch:  { label:"Meilisearch",           icon:"🔎", color:"#FF5CAA" },
+  pgvector:     { label:"pgvector",              icon:"🧮", color:"#336791" },
+
+  // Observabilidad extra
+  tempo:        { label:"Tempo",                 icon:"🕐", color:"#F46800" },
+  alertmanager: { label:"Alertmanager",          icon:"🔔", color:"#E6522C" },
+  uptimerobot:  { label:"UptimeRobot",           icon:"🟢", color:"#1DA462" },
+
+  // Comunicaciones
+  resend:       { label:"Resend",                icon:"📨", color:"#000000" },
+  livekit:      { label:"LiveKit",               icon:"🎙️", color:"#0F62FE" },
+  mediamtx:     { label:"Mediamtx",             icon:"📹", color:"#1a1a2e" },
+  cfstream:     { label:"Cloudflare Stream",     icon:"📺", color:"#F38020" }
 };
 var PALETTE_GROUPS = [
   { title:"Enrutamiento & App",  keys:["traefik","nginx","easypanel","frontend","backend","ai"] },
   { title:"Datos & Colas",       keys:["postgres","pgbouncer","redis","bullmq","minio","wasabi"] },
   { title:"Observabilidad",      keys:["prometheus","grafana","loki","sentry"] },
-  { title:"Infraestructura",     keys:["cloudflare","hetzner","loadbalancer","wireguard","internet","smtp","cicd"] }
+  { title:"Infraestructura",       keys:["cloudflare","hetzner","loadbalancer","wireguard","internet","smtp","cicd"] },
+  { title:"Compute & Orquestación", keys:["swarm","k3s"] },
+  { title:"Storage",               keys:["r2","backblaze","hetzner_os"] },
+  { title:"Seguridad",             keys:["vault","authentik","crowdsec","waf","trivy"] },
+  { title:"Mensajería",            keys:["nats","temporal","redpanda"] },
+  { title:"DB & Search",           keys:["meilisearch","pgvector"] },
+  { title:"Observabilidad extra",  keys:["tempo","alertmanager","uptimerobot"] },
+  { title:"Comunicaciones",        keys:["resend","livekit","mediamtx","cfstream"] }
 ];
 var AREA_TYPES = {
   "net-public":   { label:"Red Pública",   icon:"🌐", color:"#F38020", fill:"rgba(243,128,32,.08)", dash:"9 5"  },
