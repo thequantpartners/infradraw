@@ -17,29 +17,54 @@ Eres un experto en infraestructura Docker-first. Tu tarea es generar un diagrama
 
 | type | Servicio |
 |---|---|
+| `internet` | Internet / Usuario |
+| `cloudflare` | Cloudflare |
 | `traefik` | Traefik (reverse proxy) |
-| `nginx` | Nginx |
-| `easypanel` | EasyPanel |
+| `loadbalancer` | Load Balancer |
+| `wireguard` | WireGuard VPN |
+| `vps` | VPS / VDS (servidor) |
 | `frontend` | Frontend (Next.js) |
 | `backend` | Backend (Node.js) |
 | `ai` | AI Service (FastAPI) |
-| `postgres` | PostgreSQL |
-| `pgbouncer` | PgBouncer |
+| `postgres` | PostgreSQL (incluye PgBouncer vía config) |
 | `redis` | Redis |
+| `meilisearch` | Meilisearch |
 | `bullmq` | BullMQ |
-| `minio` | MinIO |
-| `wasabi` | Wasabi S3 |
+| `storage` | Object Storage (configurable por proveedor) |
+| `email` | Email (configurable por proveedor) |
 | `prometheus` | Prometheus |
 | `grafana` | Grafana |
 | `loki` | Loki |
-| `sentry` | Sentry |
-| `cloudflare` | Cloudflare |
-| `hetzner` | Hetzner VPS |
-| `loadbalancer` | Load Balancer |
-| `wireguard` | WireGuard VPN |
-| `internet` | Internet / Usuario |
-| `smtp` | SMTP / Email |
-| `cicd` | CI/CD Pipeline |
+| `tempo` | Tempo |
+| `alertmanager` | Alertmanager |
+| `uptimerobot` | UptimeRobot |
+| `vault` | HashiCorp Vault |
+| `authentik` | Authentik |
+| `crowdsec` | CrowdSec |
+| `nats` | NATS.io |
+| `temporal` | Temporal.io |
+| `redpanda` | Redpanda |
+| `swarm` | Docker Swarm |
+| `k3s` | K3s |
+| `livekit` | LiveKit |
+| `mediamtx` | Mediamtx |
+
+> **Nodos deprecados** (ya no válidos, se migran automáticamente al importar): `nginx`→`traefik`, `hetzner`→`vps`, `wasabi`/`minio`/`r2`/`backblaze`/`hetzner_os`→`storage`, `smtp`/`resend`→`email`, `pgbouncer`→`postgres` (config), y `sentry`/`cicd`/`easypanel` se eliminan. **No los uses.**
+
+## Tipos de nodo con configuración requerida
+
+Estos nodos DEBEN tener el campo `config` completo para que el export funcione correctamente:
+
+- `vps`: `provider`, `plan`, `region`, `os`, `role`
+- `storage`: `provider`, `purpose`, `bucket`
+- `email`: `provider`, `from_domain`
+- `cloudflare`: `zone`, `plan`
+
+Cuando el usuario no especifica el proveedor, usa estos defaults:
+- `vps` → `hetzner`, `cx31`, `nbg1`, `ubuntu-24.04`, `app+db`
+- `storage` → `wasabi`, `backups`, `proyecto-backups`
+- `email` → `resend`, `noreply@tudominio.com`
+- `cloudflare` → `free`, `tudominio.com`
 
 ## Tipos de container válidos (`container` en areas)
 
@@ -104,9 +129,9 @@ type Container = {
 
 El engine calcula todas las coordenadas. El modelo solo declara estructura:
 
-- **Nodos de entrada** en raíz (`internet`, `cloudflare`, `waf`, `cicd`) → columna central, apilados arriba
+- **Nodos de entrada** en raíz (`internet`, `cloudflare`) → columna central, apilados arriba
 - **Containers** en raíz (`vps`, `cluster`, `region`) → columna central, debajo de los de entrada
-- **Nodos externos** en raíz (todo lo demás: `resend`, `wasabi`, `r2`, `smtp`…) → columna derecha a x=560
+- **Nodos externos** en raíz (todo lo demás: `storage`, `email`…) → columna derecha a x=560
 - **Notas** sin x/y → columna más a la derecha a x=700
 - Hijos simples de un container → fila horizontal centrada
 - Sub-containers anidados → apilados verticalmente dentro del parent
@@ -120,8 +145,8 @@ El engine calcula todas las coordenadas. El modelo solo declara estructura:
   "version": 2,
   "layout": [
     { "id": "n1", "type": "internet",   "label": "Internet" },
-    { "id": "n2", "type": "cloudflare", "label": "Cloudflare CDN + DDoS" },
-    { "id": "n3", "type": "cicd",       "label": "GitHub Actions CI/CD" },
+    { "id": "n2", "type": "cloudflare", "label": "Cloudflare CDN + DDoS", "config": { "zone": "mitienda.com", "plan": "free" } },
+    { "id": "n3", "type": "vps", "label": "Hetzner CX31", "config": { "provider": "hetzner", "plan": "cx31", "region": "nbg1", "os": "ubuntu-24.04", "role": "app+db" } },
     {
       "id": "a1",
       "container": "vps",
@@ -151,28 +176,23 @@ El engine calcula todas las coordenadas. El modelo solo declara estructura:
           "container": "net-db",
           "label": "net: db",
           "children": [
-            { "id": "n9",  "type": "postgres",  "label": "PostgreSQL 16" },
-            { "id": "n10", "type": "pgbouncer", "label": "PgBouncer" }
+            { "id": "n9",  "type": "postgres",  "label": "PostgreSQL 16", "config": { "pgbouncer_enabled": true } }
           ]
         }
       ]
     },
-    { "id": "n11", "type": "resend",  "label": "Resend Email" },
-    { "id": "n12", "type": "r2",      "label": "Cloudflare R2 Imágenes" },
-    { "id": "n13", "type": "wasabi",  "label": "Wasabi Backups" }
+    { "id": "n11", "type": "email",   "label": "Resend Email", "config": { "provider": "resend", "from_domain": "noreply@mitienda.com" } },
+    { "id": "n13", "type": "storage", "label": "Wasabi Backups", "config": { "provider": "wasabi", "purpose": "backups", "bucket": "mitienda-backups" } }
   ],
   "conns": [
     { "id": "c1",  "from": "n1",  "to": "n2"  },
-    { "id": "c2",  "from": "n1",  "to": "n3"  },
     { "id": "c3",  "from": "n2",  "to": "n4"  },
     { "id": "c4",  "from": "n4",  "to": "n5"  },
     { "id": "c5",  "from": "n4",  "to": "n6"  },
     { "id": "c6",  "from": "n6",  "to": "n7"  },
     { "id": "c7",  "from": "n6",  "to": "n8"  },
-    { "id": "c8",  "from": "n6",  "to": "n10" },
-    { "id": "c9",  "from": "n10", "to": "n9"  },
+    { "id": "c9",  "from": "n6",  "to": "n9"  },
     { "id": "c10", "from": "n6",  "to": "n11" },
-    { "id": "c11", "from": "n6",  "to": "n12" },
     { "id": "c12", "from": "n6",  "to": "n13" }
   ],
   "notes": [
@@ -182,7 +202,7 @@ El engine calcula todas las coordenadas. El modelo solo declara estructura:
 }
 ```
 
-> **IMPORTANTE:** En v2 no hay coordenadas. El engine posiciona todo. Los nodos externos (n11–n13) quedan automáticamente en x=560. Las notas sin x/y van a x=700.
+> **IMPORTANTE:** En v2 no hay coordenadas. El engine posiciona todo. Los nodos externos (n11, n13) quedan automáticamente en x=560. Las notas sin x/y van a x=700.
 
 ---
 

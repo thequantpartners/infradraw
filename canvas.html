@@ -6,6 +6,7 @@
 <title>InfraDraw — Editor</title>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root {
     --bg: #0d1117; --panel: #161b22; --panel-2: #1c2230;
@@ -61,6 +62,51 @@
   .export-menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 5px; z-index: 50; min-width: 170px; box-shadow: 0 8px 24px rgba(0,0,0,.55); }
   .export-menu .btn { width: 100%; justify-content: flex-start; margin-bottom: 3px; }
   .export-menu .btn:last-child { margin-bottom: 0; }
+  /* Config panel */
+  .cfg-panel { position: fixed; right: 0; top: 0; height: 100vh; width: 300px; background: var(--panel); border-left: 1px solid var(--border); z-index: 60; display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.4); }
+  .cfg-head { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 8px; flex: 0 0 auto; }
+  .cfg-title { font-size: 14px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+  .cfg-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cfg-close { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; padding: 0 4px; }
+  .cfg-close:hover { color: var(--text); }
+  .cfg-body { padding: 14px 16px; overflow-y: auto; flex: 1; }
+  .cfg-field { margin-bottom: 14px; }
+  .cfg-field.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .cfg-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+  .cfg-field.row .cfg-label { margin-bottom: 0; }
+  .cfg-input, .cfg-select { width: 100%; background: var(--panel-2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); padding: 7px 9px; font-size: 13px; font-family: inherit; outline: none; }
+  .cfg-input:focus, .cfg-select:focus { border-color: var(--accent); }
+  .cfg-empty { color: var(--muted); font-size: 13px; text-align: center; margin-top: 36px; line-height: 1.6; padding: 0 10px; }
+  .cfg-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); margin-bottom: 7px; cursor: pointer; }
+  .cfg-check input { accent-color: var(--accent); width: 15px; height: 15px; }
+  /* Toggle switch */
+  .toggle { position: relative; width: 40px; height: 22px; flex: 0 0 40px; display: inline-block; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle .track { position: absolute; inset: 0; background: var(--panel-2); border: 1px solid var(--border); border-radius: 22px; transition: .15s; }
+  .toggle .thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: var(--muted); border-radius: 50%; transition: .15s; }
+  .toggle input:checked + .track { background: rgba(79,140,255,.3); border-color: var(--accent); }
+  .toggle input:checked + .track .thumb { transform: translateX(18px); background: var(--accent); }
+  /* Gear icon on node */
+  .node-gear { cursor: pointer; opacity: .6; transition: opacity .15s; }
+  .node-gear:hover { opacity: 1; }
+  /* Validation badge + modal */
+  .val-badge { position: relative; }
+  .val-count { position: absolute; top: -7px; right: -7px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 1px 5px; min-width: 16px; text-align: center; line-height: 1.4; }
+  .val-count.warn { background: #f59e0b; }
+  .modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 80; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; width: 540px; max-width: 92vw; max-height: 84vh; display: flex; flex-direction: column; box-shadow: 0 16px 48px rgba(0,0,0,.6); }
+  .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; flex: 0 0 auto; }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-body { padding: 16px 20px; overflow-y: auto; }
+  .modal-foot { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; flex: 0 0 auto; }
+  .val-item { display: flex; gap: 9px; padding: 9px 11px; border-radius: 8px; margin-bottom: 7px; font-size: 13px; line-height: 1.45; align-items: flex-start; }
+  .val-err { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #fca5a5; }
+  .val-warn { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); color: #fcd34d; }
+  .val-ok { color: #4ade80; text-align: center; padding: 24px; font-size: 14px; }
+  .val-sec-title { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 10px 0 8px; }
+  .val-sec-title:first-child { margin-top: 0; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #3d7bff; border-color: #3d7bff; }
 </style>
 </head>
 <body>
@@ -72,78 +118,76 @@ var h = React.createElement;
 var useState = React.useState, useRef = React.useRef, useEffect = React.useEffect;
 
 var SERVICES = {
-  traefik:      { label:"Traefik",         icon:"🔀", color:"#24A1C1" },
-  nginx:        { label:"Nginx",           icon:"⚡", color:"#009900" },
-  easypanel:    { label:"EasyPanel",       icon:"🎛️", color:"#6366f1" },
-  frontend:     { label:"Frontend (Next)", icon:"▲",  color:"#5b6470" },
-  backend:      { label:"Backend (Node)",  icon:"⚙️", color:"#539E43" },
-  ai:           { label:"AI (FastAPI)",    icon:"🤖", color:"#0c8f82" },
-  postgres:     { label:"PostgreSQL",      icon:"🐘", color:"#336791" },
-  pgbouncer:    { label:"PgBouncer",       icon:"🔃", color:"#4169E1" },
-  redis:        { label:"Redis",           icon:"🔴", color:"#DC382D" },
-  bullmq:       { label:"BullMQ",          icon:"📬", color:"#9B2335" },
-  minio:        { label:"MinIO",           icon:"📦", color:"#C72D48" },
-  wasabi:       { label:"Wasabi",          icon:"🪣", color:"#00C36F" },
-  prometheus:   { label:"Prometheus",      icon:"🔥", color:"#E6522C" },
-  grafana:      { label:"Grafana",         icon:"📊", color:"#F46800" },
-  loki:         { label:"Loki",            icon:"🪵", color:"#F4A261" },
-  sentry:       { label:"Sentry",          icon:"🐛", color:"#7c3aed" },
-  cloudflare:   { label:"Cloudflare",      icon:"☁️", color:"#F38020" },
-  hetzner:      { label:"Hetzner VPS",     icon:"🖥️", color:"#D50C2D" },
-  loadbalancer: { label:"Load Balancer",   icon:"⚖️", color:"#8E44AD" },
-  wireguard:    { label:"WireGuard",       icon:"🔐", color:"#88171A" },
-  internet:     { label:"Internet / User", icon:"🌍", color:"#475569" },
-  smtp:         { label:"SMTP / Email",    icon:"📧", color:"#059669" },
-  cicd:         { label:"CI/CD Pipeline",  icon:"🚀", color:"#2088FF" },
+  // ENTRADA
+  internet:     { label:"Internet",          icon:"🌍", color:"#475569" },
 
-  // Compute & Orquestación
-  swarm:        { label:"Docker Swarm",        icon:"🐝", color:"#1D63ED" },
-  k3s:          { label:"K3s",                 icon:"☸️", color:"#FFA500" },
+  // EDGE & NETWORKING
+  cloudflare:   { label:"Cloudflare",        icon:"☁️",  color:"#F38020" },
+  traefik:      { label:"Traefik",           icon:"🔀", color:"#24A1C1" },
+  loadbalancer: { label:"Load Balancer",     icon:"⚖️",  color:"#8E44AD" },
+  wireguard:    { label:"WireGuard",         icon:"🔐", color:"#88171A" },
 
-  // Storage
-  r2:           { label:"Cloudflare R2",        icon:"🪣", color:"#F38020" },
-  backblaze:    { label:"Backblaze B2",          icon:"🧊", color:"#E02222" },
-  hetzner_os:   { label:"Hetzner Object Store",  icon:"📦", color:"#D50C2D" },
+  // COMPUTE
+  vps:          { label:"VPS / VDS",         icon:"🖥️",  color:"#D50C2D" },
 
-  // Seguridad
-  vault:        { label:"HashiCorp Vault",       icon:"🔒", color:"#FFCD00" },
-  authentik:    { label:"Authentik",             icon:"🛡️", color:"#fd4b2d" },
-  crowdsec:     { label:"CrowdSec",              icon:"🚨", color:"#2B65EC" },
-  waf:          { label:"Cloudflare WAF",         icon:"🧱", color:"#F38020" },
-  trivy:        { label:"Trivy",                 icon:"🔍", color:"#1904DA" },
+  // APLICACIÓN
+  frontend:     { label:"Frontend",          icon:"▲",  color:"#5b6470" },
+  backend:      { label:"Backend",           icon:"⚙️",  color:"#539E43" },
+  ai:           { label:"AI Service",        icon:"🤖", color:"#0c8f82" },
 
-  // Mensajería & Workflows
-  nats:         { label:"NATS.io",               icon:"📡", color:"#27AAE1" },
-  temporal:     { label:"Temporal.io",            icon:"⏱️", color:"#141414" },
-  redpanda:     { label:"Redpanda",              icon:"🐼", color:"#E6353B" },
+  // BASE DE DATOS
+  postgres:     { label:"PostgreSQL",        icon:"🐘", color:"#336791" },
+  redis:        { label:"Redis",             icon:"🔴", color:"#DC382D" },
 
-  // DB & Search
-  meilisearch:  { label:"Meilisearch",           icon:"🔎", color:"#FF5CAA" },
-  pgvector:     { label:"pgvector",              icon:"🧮", color:"#336791" },
+  // SEARCH & QUEUE
+  meilisearch:  { label:"Meilisearch",       icon:"🔎", color:"#FF5CAA" },
+  bullmq:       { label:"BullMQ",            icon:"📬", color:"#9B2335" },
 
-  // Observabilidad extra
-  tempo:        { label:"Tempo",                 icon:"🕐", color:"#F46800" },
-  alertmanager: { label:"Alertmanager",          icon:"🔔", color:"#E6522C" },
-  uptimerobot:  { label:"UptimeRobot",           icon:"🟢", color:"#1DA462" },
+  // STORAGE (configurable por proveedor)
+  storage:      { label:"Object Storage",    icon:"🪣", color:"#00C36F" },
 
-  // Comunicaciones
-  resend:       { label:"Resend",                icon:"📨", color:"#000000" },
-  livekit:      { label:"LiveKit",               icon:"🎙️", color:"#0F62FE" },
-  mediamtx:     { label:"Mediamtx",             icon:"📹", color:"#1a1a2e" },
-  cfstream:     { label:"Cloudflare Stream",     icon:"📺", color:"#F38020" }
+  // EMAIL (configurable por proveedor)
+  email:        { label:"Email",             icon:"📨", color:"#059669" },
+
+  // OBSERVABILIDAD
+  prometheus:   { label:"Prometheus",        icon:"🔥", color:"#E6522C" },
+  grafana:      { label:"Grafana",           icon:"📊", color:"#F46800" },
+  loki:         { label:"Loki",              icon:"🪵", color:"#F4A261" },
+  tempo:        { label:"Tempo",             icon:"🕐", color:"#F46800" },
+  alertmanager: { label:"Alertmanager",      icon:"🔔", color:"#E6522C" },
+  uptimerobot:  { label:"UptimeRobot",       icon:"🟢", color:"#1DA462" },
+
+  // SEGURIDAD
+  vault:        { label:"HashiCorp Vault",   icon:"🔒", color:"#FFCD00" },
+  authentik:    { label:"Authentik",         icon:"🛡️",  color:"#fd4b2d" },
+  crowdsec:     { label:"CrowdSec",          icon:"🚨", color:"#2B65EC" },
+
+  // MENSAJERÍA AVANZADA
+  nats:         { label:"NATS.io",           icon:"📡", color:"#27AAE1" },
+  temporal:     { label:"Temporal.io",       icon:"⏱️",  color:"#6B7280" },
+  redpanda:     { label:"Redpanda",          icon:"🐼", color:"#E6353B" },
+
+  // ORQUESTACIÓN (Nivel 2+)
+  swarm:        { label:"Docker Swarm",      icon:"🐝", color:"#1D63ED" },
+  k3s:          { label:"K3s",              icon:"☸️",  color:"#FFA500" },
+
+  // NETWORKING AVANZADO
+  livekit:      { label:"LiveKit",           icon:"🎙️",  color:"#0F62FE" },
+  mediamtx:     { label:"Mediamtx",         icon:"📹", color:"#1a1a2e" }
 };
 var PALETTE_GROUPS = [
-  { title:"Enrutamiento & App",  keys:["traefik","nginx","easypanel","frontend","backend","ai"] },
-  { title:"Datos & Colas",       keys:["postgres","pgbouncer","redis","bullmq","minio","wasabi"] },
-  { title:"Observabilidad",      keys:["prometheus","grafana","loki","sentry"] },
-  { title:"Infraestructura",       keys:["cloudflare","hetzner","loadbalancer","wireguard","internet","smtp","cicd"] },
-  { title:"Compute & Orquestación", keys:["swarm","k3s"] },
-  { title:"Storage",               keys:["r2","backblaze","hetzner_os"] },
-  { title:"Seguridad",             keys:["vault","authentik","crowdsec","waf","trivy"] },
-  { title:"Mensajería",            keys:["nats","temporal","redpanda"] },
-  { title:"DB & Search",           keys:["meilisearch","pgvector"] },
-  { title:"Observabilidad extra",  keys:["tempo","alertmanager","uptimerobot"] },
-  { title:"Comunicaciones",        keys:["resend","livekit","mediamtx","cfstream"] }
+  { title:"Entrada",          keys:["internet"] },
+  { title:"Edge & Red",       keys:["cloudflare","traefik","loadbalancer","wireguard"] },
+  { title:"Compute",          keys:["vps"] },
+  { title:"Aplicación",       keys:["frontend","backend","ai"] },
+  { title:"Base de datos",    keys:["postgres","redis"] },
+  { title:"Search & Queue",   keys:["meilisearch","bullmq"] },
+  { title:"Storage & Email",  keys:["storage","email"] },
+  { title:"Observabilidad",   keys:["prometheus","grafana","loki","tempo","alertmanager","uptimerobot"] },
+  { title:"Seguridad",        keys:["vault","authentik","crowdsec"] },
+  { title:"Mensajería",       keys:["nats","temporal","redpanda"] },
+  { title:"Orquestación",     keys:["swarm","k3s"] },
+  { title:"Media",            keys:["livekit","mediamtx"] }
 ];
 var AREA_TYPES = {
   "net-public":   { label:"Red Pública",   icon:"🌐", color:"#F38020", fill:"rgba(243,128,32,.08)", dash:"9 5"  },
@@ -218,6 +262,1615 @@ function resolveLayout(layoutTree,conns,notes){
   return{nodes:nodes,areas:areas,conns:conns||[],notes:resolvedNotes};
 }
 
+// ======== Node configuration schema ========
+var CONFIG_SCHEMA = {
+
+  vps: {
+    label: "Servidor VPS / VDS",
+    fields: [
+      { key: "provider", label: "Proveedor", type: "select",
+        options: ["hetzner","digitalocean","contabo","vultr","linode"],
+        default: "hetzner" },
+      { key: "plan", label: "Plan", type: "select_dynamic",
+        dependsOn: "provider",
+        options: {
+          hetzner:      ["cx21 (2vCPU 4GB)","cx31 (2vCPU 8GB)",
+                         "cx41 (4vCPU 16GB)","cx51 (8vCPU 32GB)",
+                         "ccx13 (2vCPU 8GB dedicado)","ccx23 (4vCPU 16GB dedicado)"],
+          digitalocean: ["s-1vcpu-2gb","s-2vcpu-4gb","s-4vcpu-8gb",
+                         "s-8vcpu-16gb","c-2 (CPU dedicado)","c-4 (CPU dedicado)"],
+          contabo:      ["vps-s (4vCPU 8GB)","vps-m (6vCPU 16GB)",
+                         "vps-l (8vCPU 30GB)","vds-s (4vCPU 8GB dedicado)"],
+          vultr:        ["vc2-1c-2gb","vc2-2c-4gb","vc2-4c-8gb",
+                         "vhf-2c-4gb (HF)","vhf-4c-8gb (HF)"],
+          linode:       ["nanode-1gb","linode-4gb","linode-8gb",
+                         "linode-16gb","dedicated-4gb","dedicated-8gb"]
+        },
+        default: "cx31 (2vCPU 8GB)" },
+      { key: "region", label: "Región", type: "select_dynamic",
+        dependsOn: "provider",
+        options: {
+          hetzner:      ["nbg1 — Nuremberg","fsn1 — Falkenstein",
+                         "hel1 — Helsinki","ash — Ashburn USA"],
+          digitalocean: ["nyc3 — New York","sfo3 — San Francisco",
+                         "ams3 — Amsterdam","fra1 — Frankfurt",
+                         "sgp1 — Singapore","syd1 — Sydney"],
+          contabo:      ["EU — Alemania","US — EEUU","APAC — Asia"],
+          vultr:        ["ewr — New Jersey","lax — Los Angeles",
+                         "ams — Amsterdam","fra — Frankfurt","sgp — Singapore"],
+          linode:       ["us-east","us-west","eu-west","eu-central","ap-south"]
+        },
+        default: "nbg1 — Nuremberg" },
+      { key: "os", label: "Sistema Operativo", type: "select",
+        options: ["ubuntu-24.04","ubuntu-22.04","debian-12","debian-11"],
+        default: "ubuntu-24.04" },
+      { key: "role", label: "Rol en la arquitectura", type: "select",
+        options: ["app","db","app+db"],
+        default: "app+db" }
+    ]
+  },
+
+  cloudflare: {
+    label: "Cloudflare",
+    fields: [
+      { key: "zone", label: "Dominio", type: "text",
+        default: "tudominio.com" },
+      { key: "plan", label: "Plan", type: "select",
+        options: ["free","pro ($20/mes)","business ($200/mes)"],
+        default: "free" },
+      { key: "waf_enabled", label: "WAF activo", type: "boolean",
+        default: false },
+      { key: "rate_limiting", label: "Rate limiting", type: "boolean",
+        default: false },
+      { key: "ddos_protection", label: "DDoS Protection", type: "boolean",
+        default: true },
+      { key: "lb_enabled", label: "Load Balancer (multi-VPS)",
+        type: "boolean", default: false }
+    ]
+  },
+
+  traefik: {
+    label: "Traefik",
+    fields: [
+      { key: "version", label: "Versión", type: "select",
+        options: ["v3.0","v2.10"], default: "v3.0" },
+      { key: "dashboard", label: "Dashboard habilitado",
+        type: "boolean", default: true },
+      { key: "cert_email", label: "Email para SSL (Let's Encrypt)",
+        type: "text", default: "admin@tudominio.com" }
+    ]
+  },
+
+  loadbalancer: {
+    label: "Load Balancer",
+    fields: [
+      { key: "provider", label: "Proveedor", type: "select",
+        options: ["hetzner_lb","cloudflare_lb","traefik_swarm"],
+        default: "hetzner_lb" },
+      { key: "plan", label: "Plan Hetzner LB", type: "select",
+        options: ["lb11 ($6/mes)","lb21 ($15/mes)","lb31 ($30/mes)"],
+        default: "lb11 ($6/mes)" }
+    ]
+  },
+
+  postgres: {
+    label: "PostgreSQL",
+    fields: [
+      { key: "version", label: "Versión", type: "select",
+        options: ["16","15","14"], default: "16" },
+      { key: "port", label: "Puerto", type: "text", default: "5432" },
+      { key: "pgbouncer_enabled", label: "Habilitar PgBouncer",
+        type: "boolean", default: false },
+      { key: "pgbouncer_pool_mode", label: "PgBouncer pool mode",
+        type: "select",
+        options: ["transaction","session","statement"],
+        default: "transaction" },
+      { key: "pgbouncer_max_conn", label: "PgBouncer max conexiones",
+        type: "select",
+        options: ["100","200","500","1000"], default: "100" },
+      { key: "extensions", label: "Extensiones", type: "multiselect",
+        options: ["pgvector","postgis","pg_stat_statements","uuid-ossp"],
+        default: ["pg_stat_statements"] }
+    ]
+  },
+
+  redis: {
+    label: "Redis",
+    fields: [
+      { key: "version", label: "Versión", type: "select",
+        options: ["7","6"], default: "7" },
+      { key: "mode", label: "Modo", type: "select",
+        options: ["standalone","sentinel","cluster"], default: "standalone" },
+      { key: "maxmemory", label: "Memoria máxima", type: "select",
+        options: ["256mb","512mb","1gb","2gb","4gb"], default: "1gb" },
+      { key: "password_required", label: "Contraseña obligatoria",
+        type: "boolean", default: true }
+    ]
+  },
+
+  storage: {
+    label: "Object Storage",
+    fields: [
+      { key: "provider", label: "Proveedor", type: "select",
+        options: ["wasabi","cloudflare_r2","hetzner_os","backblaze_b2"],
+        default: "wasabi" },
+      { key: "purpose", label: "Uso principal", type: "select",
+        options: ["backups","assets","media","general"], default: "backups" },
+      { key: "bucket", label: "Nombre del bucket", type: "text",
+        default: "mi-proyecto" },
+      { key: "region", label: "Región", type: "select_dynamic",
+        dependsOn: "provider",
+        options: {
+          wasabi:        ["us-east-1","eu-central-1","ap-northeast-1"],
+          cloudflare_r2: ["auto (global)"],
+          hetzner_os:    ["nbg1","fsn1","hel1"],
+          backblaze_b2:  ["us-west-004","eu-central-003"]
+        },
+        default: "us-east-1" }
+    ]
+  },
+
+  email: {
+    label: "Email transaccional",
+    fields: [
+      { key: "provider", label: "Proveedor", type: "select",
+        options: ["resend","postmark","brevo","sendgrid"],
+        default: "resend" },
+      { key: "from_domain", label: "Dominio remitente", type: "text",
+        default: "noreply@tudominio.com" },
+      { key: "plan", label: "Plan", type: "select_dynamic",
+        dependsOn: "provider",
+        options: {
+          resend:    ["free (3k/mes)","pro (50k/mes)","business"],
+          postmark:  ["developer (100/mes)","starter","pro"],
+          brevo:     ["free (300/día)","starter","business"],
+          sendgrid:  ["free (100/día)","essentials","pro"]
+        },
+        default: "free (3k/mes)" }
+    ]
+  },
+
+  bullmq: {
+    label: "BullMQ",
+    fields: [
+      { key: "concurrency", label: "Concurrencia", type: "select",
+        options: ["1","2","5","10","20"], default: "5" },
+      { key: "separate_worker", label: "Worker separado del backend",
+        type: "boolean", default: true }
+    ]
+  },
+
+  meilisearch: {
+    label: "Meilisearch",
+    fields: [
+      { key: "version", label: "Versión", type: "text", default: "latest" },
+      { key: "max_indexing_memory", label: "Memoria para indexar",
+        type: "select",
+        options: ["512mb","1gb","2gb"], default: "512mb" }
+    ]
+  },
+
+  vault: {
+    label: "HashiCorp Vault",
+    fields: [
+      { key: "mode", label: "Modo", type: "select",
+        options: ["dev","standalone","ha"], default: "standalone" },
+      { key: "storage_backend", label: "Storage backend", type: "select",
+        options: ["file","postgresql","consul"], default: "file" }
+    ]
+  },
+
+  authentik: {
+    label: "Authentik",
+    fields: [
+      { key: "version", label: "Versión", type: "text", default: "latest" },
+      { key: "use_case", label: "Caso de uso", type: "select",
+        options: ["sso_interno","b2c","enterprise_sso"], default: "sso_interno" }
+    ]
+  }
+};
+function getNodeSchema(type){ return CONFIG_SCHEMA[type]||null; }
+function resolveConfig(node){
+  var schema=getNodeSchema(node.type),c=Object.assign({},node.config||{});
+  if(schema)schema.fields.forEach(function(f){ if(c[f.key]===undefined)c[f.key]=f.default; });
+  return c;
+}
+function capWord(s){ s=String(s||''); return s?s.charAt(0).toUpperCase()+s.slice(1):s; }
+var STORAGE_LABELS={ wasabi:"Wasabi", cloudflare_r2:"Cloudflare R2", hetzner_os:"Hetzner Object Store", backblaze_b2:"Backblaze B2" };
+var LB_LABELS={ hetzner_lb:"Hetzner LB", cloudflare_lb:"Cloudflare LB", traefik_swarm:"Traefik Swarm" };
+function computeAutoLabel(type,config){
+  if(!config)return null;
+  if(type==='vps'){ if(!config.provider||!config.plan)return null; return capWord(config.provider)+' '+String(config.plan).split(' ')[0].toUpperCase(); }
+  if(type==='storage')return STORAGE_LABELS[config.provider]||null;
+  if(type==='email')return config.provider?capWord(config.provider):null;
+  if(type==='loadbalancer')return LB_LABELS[config.provider]||null;
+  return null;
+}
+
+// ======== Architecture sanitizer ========
+function validateArchitecture(nodes, areas, conns) {
+  nodes=nodes||[];areas=areas||[];conns=conns||[];
+  var errors = [];
+  var warnings = [];
+  var types = nodes.map(function(n){return n.type;});
+  var hasType = function(t){return types.indexOf(t)!==-1;};
+
+  // ── ERRORES ──────────────────────────────────────────
+
+  // VPS sin proveedor configurado
+  nodes.filter(function(n){return n.type==='vps';}).forEach(function(n){
+    if (!(n.config&&n.config.provider)) {
+      errors.push("El VPS \""+n.label+"\" no tiene proveedor configurado. Haz click en ⚙ para seleccionar Hetzner, Contabo, etc.");
+    }
+  });
+
+  // Redis sin contraseña
+  nodes.filter(function(n){return n.type==='redis';}).forEach(function(n){
+    if (n.config && n.config.password_required === false) {
+      errors.push("Redis \""+n.label+"\" tiene contraseña deshabilitada. Redis sin contraseña es un riesgo crítico de seguridad.");
+    }
+  });
+
+  // DB sin contenedor
+  nodes.filter(function(n){return ['postgres','redis'].indexOf(n.type)!==-1;}).forEach(function(n){
+    if (!n.parentId) {
+      errors.push("\""+n.label+"\" debe estar dentro de un VPS o red. Arrastra el nodo dentro de un contenedor.");
+    }
+  });
+
+  // AI Service con acceso público directo
+  nodes.filter(function(n){return n.type==='ai';}).forEach(function(n){
+    var directConn = conns.find(function(c){
+      return (c.to===n.id || c.from===n.id) &&
+        nodes.find(function(m){return (m.id===c.from||m.id===c.to) && m.type==='internet';});
+    });
+    if (directConn) {
+      errors.push("El AI Service \""+n.label+"\" está conectado directamente a Internet. Nunca debe tener puerto público — solo accesible desde el backend.");
+    }
+  });
+
+  // ── ADVERTENCIAS ─────────────────────────────────────
+
+  // VPS con plan pequeño y muchos servicios
+  nodes.filter(function(n){return n.type==='vps';}).forEach(function(vps){
+    var smallPlans = ['cx21','s-1vcpu-2gb','vps-s','nanode-1gb','vc2-1c-2gb'];
+    var plan = (vps.config&&vps.config.plan) || '';
+    var isSmall = smallPlans.some(function(p){return plan.indexOf(p)!==-1;});
+    var servicesInside = nodes.filter(function(n){return n.parentId===vps.id;}).length;
+    if (isSmall && servicesInside > 3) {
+      warnings.push("El plan \""+plan+"\" tiene poca RAM. Con "+servicesInside+" servicios puede quedarse sin memoria. Considera un plan superior.");
+    }
+  });
+
+  // Múltiples backends sin PgBouncer
+  var backendCount = types.filter(function(t){return t==='backend';}).length;
+  var hasPgBouncer = nodes.some(function(n){return n.type==='postgres' && n.config && n.config.pgbouncer_enabled;});
+  if (backendCount > 1 && !hasPgBouncer) {
+    warnings.push("Con "+backendCount+" instancias de backend, PgBouncer previene el agotamiento de conexiones en PostgreSQL. Habilítalo en la configuración de PostgreSQL (⚙).");
+  }
+
+  // Sin storage para backups
+  var hasBackupStorage = nodes.some(function(n){
+    return n.type==='storage' && ['backups','general'].indexOf(n.config&&n.config.purpose)!==-1;
+  });
+  if (!hasBackupStorage && hasType('postgres')) {
+    warnings.push("No hay Object Storage para backups de PostgreSQL. Agrega un nodo Storage (Wasabi o R2) con propósito \"backups\".");
+  }
+
+  // Multi-VPS sin red privada (Hetzner/DO)
+  var vpsNodes = nodes.filter(function(n){return n.type==='vps';});
+  if (vpsNodes.length > 1) {
+    var providers = vpsNodes.map(function(n){return n.config&&n.config.provider;});
+    var allHavePrivateNet = providers.every(function(p){return ['hetzner','digitalocean','vultr','linode'].indexOf(p)!==-1;});
+    if (!allHavePrivateNet) {
+      warnings.push("Con múltiples VPS, Contabo no soporta red privada entre servidores. La comunicación entre nodos irá por internet público — menos seguro y con latencia mayor.");
+    }
+  }
+
+  // Sin Traefik con backend expuesto
+  if (hasType('backend') && !hasType('traefik') && !hasType('loadbalancer')) {
+    warnings.push("Sin Traefik ni Load Balancer, el backend está expuesto directamente. Agrega Traefik para SSL automático y protección de endpoints.");
+  }
+
+  // Nivel 3 detectado — K3s recomendado
+  var appVPS = nodes.filter(function(n){return n.type==='vps' && n.config && n.config.role==='app';});
+  if (appVPS.length >= 3) {
+    warnings.push("Con "+appVPS.length+" VPS de aplicación, considera migrar a K3s para autoscaling real. El export actual usa Docker Swarm — funciona pero K3s escala mejor a este nivel.");
+  }
+
+  function dedupe(arr){var seen={},out=[];arr.forEach(function(m){if(!seen[m]){seen[m]=1;out.push(m);}});return out;}
+  return { errors: dedupe(errors), warnings: dedupe(warnings) };
+}
+
+// ======== Project export (ZIP) ========
+
+// ── Detección de escenario ────────────────────────
+function detectScenario(nodes) {
+  var vpsNodes = nodes.filter(function(n){return n.type==='vps';});
+  var appVPS   = vpsNodes.filter(function(n){return ['app','app+db'].indexOf((n.config&&n.config.role)||'app+db')!==-1;});
+  var dbVPS    = vpsNodes.filter(function(n){return ['db'].indexOf(n.config&&n.config.role)!==-1;});
+  if (vpsNodes.length === 1) return { scenario: 1, appVPS: appVPS, dbVPS: dbVPS, vpsNodes: vpsNodes };
+  if (vpsNodes.length === 2 && dbVPS.length === 1) return { scenario: 2, appVPS: appVPS, dbVPS: dbVPS, vpsNodes: vpsNodes };
+  return { scenario: 3, appVPS: appVPS, dbVPS: dbVPS, vpsNodes: vpsNodes };
+}
+
+// ── Helpers de configuración ──────────────────────
+function getPlanRAM(provider, plan) {
+  var RAM = {
+    hetzner: { cx21:4, cx31:8, cx41:16, cx51:32, ccx13:8, ccx23:16 },
+    digitalocean: { 's-1vcpu-2gb':2,'s-2vcpu-4gb':4,'s-4vcpu-8gb':8,'s-8vcpu-16gb':16 },
+    contabo: { 'vps-s':8,'vps-m':16,'vps-l':30,'vds-s':8 },
+    vultr: { 'vc2-1c-2gb':2,'vc2-2c-4gb':4,'vc2-4c-8gb':8,'vhf-2c-4gb':4,'vhf-4c-8gb':8 },
+    linode: { 'nanode-1gb':1,'linode-4gb':4,'linode-8gb':8,'linode-16gb':16,'dedicated-4gb':4,'dedicated-8gb':8 }
+  };
+  var planKey = String(plan).split(' ')[0].toLowerCase();
+  return (RAM[provider] && RAM[provider][planKey]) || 8;
+}
+
+function getS3Endpoint(provider) {
+  var endpoints = {
+    wasabi:        'https://s3.wasabisys.com',
+    cloudflare_r2: 'https://<ACCOUNT_ID>.r2.cloudflarestorage.com',
+    hetzner_os:    'https://s3.hetzner.com',
+    backblaze_b2:  'https://s3.us-west-004.backblazeb2.com'
+  };
+  return endpoints[provider] || 'https://s3.provider.com';
+}
+
+// ── Generadores de archivos de configuración ──────
+function generatePostgresConf(ramGB) {
+  var shared   = Math.floor(ramGB * 0.25);
+  var cache    = Math.floor(ramGB * 0.75);
+  var workMem  = Math.floor((ramGB * 1024 * 0.25) / 10);
+  var maintMem = Math.floor(ramGB * 0.125 * 1024);
+  return `# postgresql.conf — generado por InfraDraw
+# Optimizado para ${ramGB}GB RAM
+
+# Memoria
+shared_buffers = ${shared}GB
+effective_cache_size = ${cache}GB
+work_mem = ${workMem}MB
+maintenance_work_mem = ${maintMem}MB
+
+# WAL
+wal_buffers = 64MB
+checkpoint_completion_target = 0.9
+max_wal_size = 2GB
+min_wal_size = 512MB
+
+# Conexiones
+max_connections = 100
+connection_timeout = 10000
+
+# Query planner (SSD)
+default_statistics_target = 100
+random_page_cost = 1.1
+
+# Logging
+log_min_duration_statement = 1000
+log_checkpoints = on
+log_lock_waits = on
+
+# Locale
+lc_messages = 'en_US.UTF-8'
+`;
+}
+
+function generateRedisConf(maxmemory) {
+  return `# redis.conf — generado por InfraDraw
+appendonly yes
+appendfsync everysec
+maxmemory ${maxmemory}
+maxmemory-policy allkeys-lru
+maxclients 1000
+timeout 300
+tcp-keepalive 300
+hz 15
+loglevel notice
+`;
+}
+
+function generateTraefikYml(certEmail) {
+  return `# traefik.yml — generado por InfraDraw
+api:
+  dashboard: true
+  insecure: false
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: public
+  file:
+    directory: /dynamic
+    watch: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+
+certificatesResolvers:
+  le:
+    acme:
+      email: ${certEmail}
+      storage: /acme/acme.json
+      httpChallenge:
+        entryPoint: web
+
+log:
+  level: WARN
+`;
+}
+
+function generateMiddlewaresYml() {
+  return `# middlewares.yml — generado por InfraDraw
+http:
+  middlewares:
+    security-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customResponseHeaders:
+          X-Powered-By: ""
+          Server: ""
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1m
+    compress:
+      compress: {}
+`;
+}
+
+// ── docker-compose.yml ────────────────────────────
+function generateCompose(nodes, areas, scenario, vpsConfig) {
+  var hasType = function(t){return nodes.some(function(n){return n.type===t;});};
+  var getNode = function(t){return nodes.find(function(n){return n.type===t;});};
+  var pgNode  = getNode('postgres');
+  var rdNode  = getNode('redis');
+  var trNode  = getNode('traefik');
+  var pgVersion = (pgNode&&pgNode.config&&pgNode.config.version) || '16';
+  var rdVersion = (rdNode&&rdNode.config&&rdNode.config.version) || '7';
+  var pgBouncer = (pgNode&&pgNode.config&&pgNode.config.pgbouncer_enabled) || false;
+  var ramGB     = getPlanRAM((vpsConfig&&vpsConfig.provider) || 'hetzner', (vpsConfig&&vpsConfig.plan) || 'cx31');
+
+  var hasPublic   = areas.some(function(a){return a.type==='net-public';});
+  var hasInternal = areas.some(function(a){return a.type==='net-internal';});
+  var hasDB       = areas.some(function(a){return a.type==='net-db';});
+
+  var out = `# docker-compose.yml — generado por InfraDraw
+# Escenario ${scenario} | ${(vpsConfig&&vpsConfig.provider) || 'hetzner'} ${(vpsConfig&&vpsConfig.plan) || 'cx31'}
+# RAM detectada: ${ramGB}GB
+
+networks:
+`;
+
+  if (hasPublic)   out += `  public:\n    driver: bridge\n`;
+  if (hasInternal) out += `  internal:\n    driver: bridge\n    internal: true\n`;
+  if (hasDB)       out += `  db:\n    driver: bridge\n    internal: true\n`;
+
+  out += `\nservices:\n`;
+
+  if (hasType('traefik')) {
+    out += `
+  traefik:
+    image: traefik:${(trNode&&trNode.config&&trNode.config.version) || 'v3.0'}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_acme:/acme
+      - ./config/traefik.yml:/traefik.yml:ro
+      - ./config/middlewares.yml:/dynamic/middlewares.yml:ro
+    networks: [public]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(\`traefik.\${DOMAIN}\`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=le"
+      - "traefik.http.routers.traefik.middlewares=dashboard-auth"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=\${TRAEFIK_DASHBOARD_AUTH}"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"\n`;
+  }
+
+  if (hasType('frontend')) {
+    var fNets = hasPublic ? '[public]' : '[public, internal]';
+    out += `
+  frontend:
+    image: \${REGISTRY}/frontend:\${VERSION:-latest}
+    restart: unless-stopped
+    networks: ${fNets}
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.\${DOMAIN}
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(\`\${DOMAIN}\`) || Host(\`www.\${DOMAIN}\`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=le"
+      - "traefik.http.routers.frontend.middlewares=security-headers,compress"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"\n`;
+  }
+
+  if (hasType('backend')) {
+    var bNets = [hasPublic?'public':null, hasInternal?'internal':null, hasDB?'db':null].filter(Boolean).join(', ');
+    out += `
+  backend:
+    image: \${REGISTRY}/backend:\${VERSION:-latest}
+    restart: unless-stopped
+    networks: [${bNets}]
+    environment:
+      - DATABASE_URL=postgresql://\${DB_USER}:\${DB_PASSWORD}@${pgBouncer?'pgbouncer':'postgres'}:${pgBouncer?'5433':'5432'}/\${DB_NAME}
+      - REDIS_URL=redis://:\${REDIS_PASSWORD}@redis:6379
+      - JWT_SECRET=\${JWT_SECRET}
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(\`api.\${DOMAIN}\`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=le"
+      - "traefik.http.routers.backend.middlewares=security-headers,rate-limit"
+      - "traefik.http.services.backend.loadbalancer.server.port=3001"\n`;
+  }
+
+  if (hasType('ai')) {
+    out += `
+  ai-service:
+    image: \${REGISTRY}/ai-service:\${VERSION:-latest}
+    restart: unless-stopped
+    networks: [internal, db]
+    environment:
+      - GEMINI_API_KEY=\${GEMINI_API_KEY}
+      - REDIS_URL=redis://:\${REDIS_PASSWORD}@redis:6379
+      - DATABASE_URL=postgresql://\${DB_USER}:\${DB_PASSWORD}@postgres:5432/\${DB_NAME}
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M\n`;
+  }
+
+  if (hasType('postgres')) {
+    out += `
+  postgres:
+    image: postgres:${pgVersion}-alpine
+    restart: unless-stopped
+    networks: [${hasDB?'db':'internal'}]
+    environment:
+      - POSTGRES_USER=\${DB_USER}
+      - POSTGRES_PASSWORD=\${DB_PASSWORD}
+      - POSTGRES_DB=\${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U \${DB_USER} -d \${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s\n`;
+
+    if (pgBouncer) {
+      var poolMode = (pgNode&&pgNode.config&&pgNode.config.pgbouncer_pool_mode) || 'transaction';
+      var maxConn  = (pgNode&&pgNode.config&&pgNode.config.pgbouncer_max_conn) || '100';
+      out += `
+  pgbouncer:
+    image: pgbouncer/pgbouncer:latest
+    restart: unless-stopped
+    networks: [${hasDB?'db':'internal'}, internal]
+    environment:
+      - DATABASE_URL=postgres://\${DB_USER}:\${DB_PASSWORD}@postgres:5432/\${DB_NAME}
+      - POOL_MODE=${poolMode}
+      - MAX_CLIENT_CONN=${maxConn}
+      - DEFAULT_POOL_SIZE=20
+    depends_on:
+      postgres:
+        condition: service_healthy\n`;
+    }
+  }
+
+  if (hasType('redis')) {
+    out += `
+  redis:
+    image: redis:${rdVersion}-alpine
+    restart: unless-stopped
+    networks: [internal]
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5\n`;
+  }
+
+  if (hasType('meilisearch')) {
+    var msNode = getNode('meilisearch');
+    out += `
+  meilisearch:
+    image: getmeili/meilisearch:${(msNode&&msNode.config&&msNode.config.version) || 'latest'}
+    restart: unless-stopped
+    networks: [internal]
+    environment:
+      - MEILI_MASTER_KEY=\${MEILI_MASTER_KEY}
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:7700/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3\n`;
+  }
+
+  if (hasType('prometheus')) {
+    out += `
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    networks: [internal]
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'\n`;
+  }
+
+  if (hasType('grafana')) {
+    out += `
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    networks: [public, internal]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=\${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(\`monitor.\${DOMAIN}\`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=le"\n`;
+  }
+
+  if (hasType('loki')) {
+    out += `
+  loki:
+    image: grafana/loki:latest
+    restart: unless-stopped
+    networks: [internal]
+    volumes:
+      - loki_data:/loki
+
+  promtail:
+    image: grafana/promtail:latest
+    restart: unless-stopped
+    networks: [internal]
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro\n`;
+  }
+
+  out += `\nvolumes:\n`;
+  if (hasType('postgres'))    out += `  postgres_data:\n`;
+  if (hasType('redis'))       out += `  redis_data:\n`;
+  if (hasType('traefik'))     out += `  traefik_acme:\n`;
+  if (hasType('meilisearch')) out += `  meilisearch_data:\n`;
+  if (hasType('prometheus'))  out += `  prometheus_data:\n`;
+  if (hasType('grafana'))     out += `  grafana_data:\n`;
+  if (hasType('loki'))        out += `  loki_data:\n`;
+
+  return out;
+}
+function generateSetup(vpsConfig, nodes) {
+  var provider = (vpsConfig && vpsConfig.provider) || 'hetzner';
+  var plan     = (vpsConfig && vpsConfig.plan) || 'cx31';
+  var os       = (vpsConfig && vpsConfig.os) || 'ubuntu-24.04';
+  var hasRedis = nodes.some(function(n){return n.type==='redis';});
+  var hasStorage = nodes.some(function(n){return n.type==='storage';});
+  return `#!/bin/bash
+# setup.sh — generado por InfraDraw
+# Proveedor: ${provider} | Plan: ${plan} | OS: ${os}
+# EJECUTAR COMO ROOT EN VPS NUEVO
+
+set -e
+
+echo "🚀 Iniciando setup de infraestructura..."
+
+# ── Sistema ─────────────────────────────────────────────
+apt-get update && apt-get upgrade -y
+
+# ── Usuario deploy ───────────────────────────────────────
+if ! id "deploy" &>/dev/null; then
+  useradd -m -s /bin/bash deploy
+  usermod -aG sudo deploy
+  echo "deploy ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/deploy
+fi
+
+mkdir -p /home/deploy/.ssh
+if [ -f /root/.ssh/authorized_keys ]; then
+  cp /root/.ssh/authorized_keys /home/deploy/.ssh/
+  chown -R deploy:deploy /home/deploy/.ssh
+  chmod 700 /home/deploy/.ssh
+  chmod 600 /home/deploy/.ssh/authorized_keys
+fi
+
+# ── SSH hardening ────────────────────────────────────────
+sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config
+sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+echo "MaxAuthTries 3" >> /etc/ssh/sshd_config
+echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
+systemctl restart sshd
+
+# ── Firewall ─────────────────────────────────────────────
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 2222/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+
+# ── Fail2ban ─────────────────────────────────────────────
+apt-get install -y fail2ban
+cat > /etc/fail2ban/jail.local << 'EOF'
+[sshd]
+enabled = true
+port = 2222
+maxretry = 3
+bantime = 3600
+EOF
+systemctl enable fail2ban
+systemctl start fail2ban
+
+# ── Docker ───────────────────────────────────────────────
+if ! command -v docker &>/dev/null; then
+  curl -fsSL https://get.docker.com | sh
+  usermod -aG docker deploy
+fi
+
+cat > /etc/docker/daemon.json << 'EOF'
+{
+  "log-driver": "json-file",
+  "log-opts": { "max-size": "50m", "max-file": "3" },
+  "metrics-addr": "127.0.0.1:9323"
+}
+EOF
+systemctl restart docker
+
+${hasRedis ? `# ── Redis overcommit ─────────────────────────────────────
+if ! grep -q "vm.overcommit_memory" /etc/sysctl.conf; then
+  echo "vm.overcommit_memory=1" >> /etc/sysctl.conf
+  sysctl -p
+fi` : ''}
+
+# ── Directorio del proyecto ──────────────────────────────
+mkdir -p /opt/proyecto
+chown deploy:deploy /opt/proyecto
+
+# ── Herramientas ─────────────────────────────────────────
+apt-get install -y htop curl wget git unzip
+${hasStorage ? `
+# ── AWS CLI v2 (para backups S3-compatible) ──────────────
+if ! command -v aws &>/dev/null; then
+  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \\
+    -o "/tmp/awscliv2.zip"
+  unzip -q /tmp/awscliv2.zip -d /tmp
+  /tmp/aws/install
+  rm -rf /tmp/awscliv2.zip /tmp/aws
+  echo "✅ AWS CLI instalado: $(aws --version)"
+fi` : ''}
+
+echo ""
+echo "✅ VPS listo."
+echo "👉 Conectar como: ssh -p 2222 deploy@$(curl -s ifconfig.me)"
+${provider === 'hetzner' ? `echo "💡 Tip Hetzner: activa backups automáticos en la consola (+20% del costo)"` : ''}
+${provider === 'contabo' ? `echo "💡 Tip Contabo: snapshots y red privada son manuales desde el panel web"` : ''}
+${provider === 'digitalocean' ? `echo "💡 Tip DigitalOcean: habilita backups semanales en el panel Droplet (+20%)"` : ''}
+`;
+}
+function generateManualProvision(vpsConfig) {
+  var plan   = (vpsConfig && vpsConfig.plan) || 'vps-s';
+  var region = (vpsConfig && vpsConfig.region) || 'EU — Alemania';
+  return `# Provision Manual — Contabo
+## Pasos para crear el servidor en Contabo
+
+Contabo no tiene API pública. Sigue estos pasos manualmente:
+
+1. Ve a https://contabo.com y accede a tu cuenta
+2. Compra un **${plan}** con estas especificaciones:
+   - OS: Ubuntu 24.04 LTS
+   - Region: ${region}
+3. En el email de confirmación recibirás:
+   - IP del servidor
+   - Contraseña root inicial
+4. Copia la IP aquí: ___________________
+5. Conéctate: \`ssh root@<IP>\`
+6. Ejecuta: \`bash setup.sh\`
+
+## Limitaciones de Contabo vs Hetzner/DigitalOcean
+- ❌ Sin red privada entre servidores (multi-VPS va por internet público)
+- ❌ Sin API para automatización
+- ❌ Sin Terraform provider oficial
+- ✅ Mejor precio por GB de RAM
+- ✅ Opción VDS (CPU dedicado) económica
+`;
+}
+function generateTerraform(nodes, vpsConfig, cloudflareConfig) {
+  var provider    = (vpsConfig && vpsConfig.provider) || 'hetzner';
+  var plan        = String((vpsConfig && vpsConfig.plan) || 'cx31').split(' ')[0];
+  var region      = String((vpsConfig && vpsConfig.region) || 'nbg1').split(' ')[0];
+  var os          = (vpsConfig && vpsConfig.os) || 'ubuntu-24.04';
+  var zone        = (cloudflareConfig && cloudflareConfig.zone) || 'tudominio.com';
+  var vpsNodes    = nodes.filter(function(n){return n.type==='vps';});
+  var multiVPS    = vpsNodes.length > 1;
+  var hasStorage  = nodes.some(function(n){return n.type==='storage';});
+  var storageNode = nodes.find(function(n){return n.type==='storage';});
+  var role0 = (vpsNodes[0] && vpsNodes[0].config && vpsNodes[0].config.role) || 'app';
+
+  if (provider === 'hetzner') {
+    return `# terraform/main.tf — generado por InfraDraw
+# Proveedor: Hetzner Cloud
+
+terraform {
+  required_version = ">= 1.5"
+  required_providers {
+    hcloud = {
+      source  = "hetznercloud/hcloud"
+      version = "~> 1.45"
+    }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
+  }
+}
+
+provider "hcloud" {
+  token = var.hcloud_token
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
+# ── SSH Key ───────────────────────────────────────────────
+resource "hcloud_ssh_key" "default" {
+  name       = "infradraw-key"
+  public_key = var.ssh_public_key
+}
+
+# ── Firewall ──────────────────────────────────────────────
+resource "hcloud_firewall" "main" {
+  name = "main-firewall"
+  rule { direction = "in"; protocol = "tcp"; port = "2222"; source_ips = ["0.0.0.0/0","::/0"] }
+  rule { direction = "in"; protocol = "tcp"; port = "80";   source_ips = ["0.0.0.0/0","::/0"] }
+  rule { direction = "in"; protocol = "tcp"; port = "443";  source_ips = ["0.0.0.0/0","::/0"] }
+}
+
+${multiVPS ? `# ── Red Privada ──────────────────────────────────────────
+resource "hcloud_network" "private" {
+  name     = "private-network"
+  ip_range = "10.0.0.0/8"
+}
+
+resource "hcloud_network_subnet" "main" {
+  network_id   = hcloud_network.private.id
+  type         = "cloud"
+  network_zone = "eu-central"
+  ip_range     = "10.0.1.0/24"
+}` : ''}
+
+${vpsNodes.map(function(vps, i){ var role=(vps.config&&vps.config.role)||'app'; return `
+# ── Servidor ${i === 0 ? 'Principal' : '#'+(i+1)} ─────────────────────────────────────
+resource "hcloud_server" "${role}_${i+1}" {
+  name        = "proyecto-${role}-${i+1}"
+  image       = "${os}"
+  server_type = "${plan}"
+  location    = "${region}"
+  ssh_keys    = [hcloud_ssh_key.default.id]
+  firewall_ids = [hcloud_firewall.main.id]
+  user_data   = file("../scripts/setup.sh")
+}
+${multiVPS ? `
+resource "hcloud_server_network" "${role}_${i+1}_net" {
+  server_id  = hcloud_server.${role}_${i+1}.id
+  network_id = hcloud_network.private.id
+  ip         = "10.0.1.${i+1}"
+}` : ''}`; }).join('\n')}
+
+# ── Cloudflare DNS ────────────────────────────────────────
+resource "cloudflare_record" "root" {
+  zone_id = var.cloudflare_zone_id
+  name    = "@"
+  value   = hcloud_server.${role0}_1.ipv4_address
+  type    = "A"
+  proxied = true
+}
+
+resource "cloudflare_record" "api" {
+  zone_id = var.cloudflare_zone_id
+  name    = "api"
+  value   = hcloud_server.${role0}_1.ipv4_address
+  type    = "A"
+  proxied = true
+}
+
+resource "cloudflare_record" "www" {
+  zone_id = var.cloudflare_zone_id
+  name    = "www"
+  value   = "${zone}"
+  type    = "CNAME"
+  proxied = true
+}
+
+${hasStorage && storageNode && storageNode.config && storageNode.config.provider === 'cloudflare_r2' ? `
+# ── Cloudflare R2 ─────────────────────────────────────────
+resource "cloudflare_r2_bucket" "storage" {
+  account_id = var.cloudflare_account_id
+  name       = var.r2_bucket_name
+  location   = "WEUR"
+}` : ''}
+`;
+  }
+
+  if (provider === 'digitalocean') {
+    return `# terraform/main.tf — generado por InfraDraw
+# Proveedor: DigitalOcean
+
+terraform {
+  required_version = ">= 1.5"
+  required_providers {
+    digitalocean = {
+      source  = "digitalocean/digitalocean"
+      version = "~> 2.0"
+    }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
+  }
+}
+
+provider "digitalocean" {
+  token = var.do_token
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
+${multiVPS ? `# ── VPC ──────────────────────────────────────────────────
+resource "digitalocean_vpc" "main" {
+  name   = "proyecto-vpc"
+  region = "${region}"
+}` : ''}
+
+${vpsNodes.map(function(vps, i){ var role=(vps.config&&vps.config.role)||'app'; return `
+resource "digitalocean_droplet" "${role}_${i+1}" {
+  name   = "proyecto-${role}-${i+1}"
+  image  = "ubuntu-24-04-x64"
+  size   = "${plan}"
+  region = "${region}"
+  ssh_keys = [var.ssh_fingerprint]
+  ${multiVPS ? 'vpc_uuid = digitalocean_vpc.main.id' : ''}
+  user_data = file("../scripts/setup.sh")
+}`; }).join('\n')}
+
+# ── Cloudflare DNS ────────────────────────────────────────
+resource "cloudflare_record" "root" {
+  zone_id = var.cloudflare_zone_id
+  name    = "@"
+  value   = digitalocean_droplet.${role0}_1.ipv4_address
+  type    = "A"
+  proxied = true
+}
+`;
+  }
+
+  return `# terraform/main.tf — ${provider}
+# Provider Terraform oficial disponible para ${provider}
+# Consulta: https://registry.terraform.io/providers/${provider}
+# La estructura es similar a Hetzner — adapta los resource types.
+`;
+}
+function generateTerraformVars(vpsConfig, cloudflareConfig) {
+  var provider = (vpsConfig && vpsConfig.provider) || 'hetzner';
+  var hasR2 = (cloudflareConfig && cloudflareConfig.storage_provider) === 'cloudflare_r2';
+  var out = `# terraform/variables.tf — generado por InfraDraw\n\n`;
+  if (provider === 'hetzner') {
+    out += `variable "hcloud_token" {
+  description = "Hetzner Cloud API Token"
+  type        = string
+  sensitive   = true
+  # Obtener en: https://console.hetzner.cloud → Security → API Tokens
+}
+
+`;
+  }
+  if (provider === 'digitalocean') {
+    out += `variable "do_token" {
+  description = "DigitalOcean API Token"
+  type        = string
+  sensitive   = true
+  # Obtener en: https://cloud.digitalocean.com/account/api/tokens
+}
+
+variable "ssh_fingerprint" {
+  description = "MD5 fingerprint de tu SSH key en DigitalOcean"
+  type        = string
+  # Obtener en: https://cloud.digitalocean.com/account/security
+}
+
+`;
+  }
+  out += `variable "ssh_public_key" {
+  description = "Contenido de tu clave SSH pública"
+  type        = string
+  # Obtener con: cat ~/.ssh/id_rsa.pub
+}
+
+variable "cloudflare_api_token" {
+  description = "Cloudflare API Token con permisos DNS:Edit, Zone:Read"
+  type        = string
+  sensitive   = true
+  # Obtener en: https://dash.cloudflare.com/profile/api-tokens
+}
+
+variable "cloudflare_zone_id" {
+  description = "Zone ID de tu dominio en Cloudflare"
+  type        = string
+  # Obtener en: Cloudflare Dashboard → tu dominio → Overview (barra lateral derecha)
+}
+
+${hasR2 ? `variable "cloudflare_account_id" {
+  description = "Account ID de Cloudflare"
+  type        = string
+  # Obtener en: Cloudflare Dashboard → barra lateral derecha
+}
+
+variable "r2_bucket_name" {
+  description = "Nombre del bucket R2"
+  type        = string
+  default     = "proyecto-backups"
+}
+` : ''}`;
+  return out;
+}
+function generateTerraformOutputs(vpsNodes) {
+  var out = `# terraform/outputs.tf — generado por InfraDraw\n\n`;
+  vpsNodes.forEach(function(vps, i){
+    var role = (vps.config && vps.config.role) || 'app';
+    out += `output "${role}_${i+1}_ip" {
+  description = "IP pública del servidor ${role} #${i+1}"
+  value       = hcloud_server.${role}_${i+1}.ipv4_address
+}
+
+`;
+  });
+  out += `# Usa estos outputs para:
+# 1. Configurar DOMAIN en .env
+# 2. Correr: ssh -p 2222 deploy@<IP> 'cd /opt/proyecto && docker compose up -d'
+`;
+  return out;
+}
+function generateEnv(nodes, vpsConfig, cloudflareConfig) {
+  var hasType = function(t){return nodes.some(function(n){return n.type===t;});};
+  var getNode = function(t){return nodes.find(function(n){return n.type===t;});};
+  var pgNode  = getNode('postgres');
+  var stNode  = getNode('storage');
+  var emNode  = getNode('email');
+  var zone    = (cloudflareConfig && cloudflareConfig.zone) || 'tudominio.com';
+  var out = `# .env.example — generado por InfraDraw
+# 1. Copia: cp .env.example .env
+# 2. Completa TODOS los valores marcados como REQUERIDO
+# 3. NUNCA subas .env a git — ya está en .gitignore
+
+# ── App ──────────────────────────────────────────────────
+NODE_ENV=production
+VERSION=latest
+REGISTRY=ghcr.io/TU_USUARIO_GITHUB
+DOMAIN=${zone}
+
+`;
+  if (hasType('traefik')) {
+    out += `# ── Traefik ─────────────────────────────────────────────
+# Generar con: htpasswd -nb admin tu_password
+TRAEFIK_DASHBOARD_AUTH=    # REQUERIDO
+
+`;
+  }
+  if (hasType('postgres')) {
+    var pgHost = (pgNode && pgNode.config && pgNode.config.pgbouncer_enabled) ? 'pgbouncer:5433' : 'postgres:5432';
+    out += `# ── PostgreSQL ──────────────────────────────────────────
+DB_USER=appuser
+DB_PASSWORD=               # REQUERIDO — generar: openssl rand -base64 32
+DB_NAME=appdb
+DATABASE_URL=postgresql://\${DB_USER}:\${DB_PASSWORD}@${pgHost}/\${DB_NAME}
+
+`;
+  }
+  if (hasType('redis')) {
+    out += `# ── Redis ───────────────────────────────────────────────
+REDIS_PASSWORD=            # REQUERIDO — generar: openssl rand -base64 24
+REDIS_URL=redis://:\${REDIS_PASSWORD}@redis:6379
+
+`;
+  }
+  if (hasType('ai')) {
+    out += `# ── AI Service ──────────────────────────────────────────
+GEMINI_API_KEY=            # REQUERIDO — https://aistudio.google.com/apikey
+# OPENAI_API_KEY=          # Alternativa a Gemini
+
+`;
+  }
+  if (hasType('storage') && stNode) {
+    var stProv   = (stNode.config && stNode.config.provider) || 'wasabi';
+    var endpoint = getS3Endpoint(stProv);
+    out += `# ── Object Storage (${stProv}) ──────────────────
+S3_ACCESS_KEY=             # REQUERIDO — desde el panel del proveedor
+S3_SECRET_KEY=             # REQUERIDO — desde el panel del proveedor
+S3_BUCKET=${(stNode.config && stNode.config.bucket) || 'proyecto-backups'}
+S3_ENDPOINT=${endpoint}
+S3_REGION=${(stNode.config && stNode.config.region) || 'us-east-1'}
+
+`;
+  }
+  if (hasType('email') && emNode) {
+    var emProv = (emNode.config && emNode.config.provider) || 'resend';
+    var emFrom = (emNode.config && emNode.config.from_domain) || 'noreply@tudominio.com';
+    out += `# ── Email (${emProv}) ─────────────────────────────
+EMAIL_PROVIDER=${emProv}
+EMAIL_FROM=${emFrom}
+${emProv === 'resend' ? 'RESEND_API_KEY=             # REQUERIDO — https://resend.com/api-keys' : 'EMAIL_API_KEY=              # REQUERIDO — desde el panel del proveedor'}
+
+`;
+  }
+  if (hasType('meilisearch')) {
+    out += `# ── Meilisearch ─────────────────────────────────────────
+MEILI_MASTER_KEY=          # REQUERIDO — generar: openssl rand -base64 32
+
+`;
+  }
+  if (hasType('grafana')) {
+    out += `# ── Grafana ─────────────────────────────────────────────
+GRAFANA_PASSWORD=          # REQUERIDO
+
+`;
+  }
+  out += `# ── JWT ─────────────────────────────────────────────────
+JWT_SECRET=                # REQUERIDO — generar: openssl rand -base64 64
+`;
+  return out;
+}
+function generateMakefile(scenario, vpsConfig) {
+  var provider = (vpsConfig && vpsConfig.provider) || 'hetzner';
+  var isManual = provider === 'contabo';
+  var IP = '$$(cd terraform && terraform output -raw app_1_ip)';
+  var L = [];
+  L.push('.PHONY: provision setup deploy logs backup rollback status ssh-app');
+  L.push('');
+  L.push('# ── Provisioning ─────────────────────────────────────────');
+  if (isManual) {
+    L.push('provision:');
+    L.push('\t@echo "⚠️  ' + provider + ' requiere provisioning manual"');
+    L.push('\t@echo "Ver PROVISION_MANUAL.md para los pasos"');
+  } else {
+    L.push('provision:');
+    L.push('\tcd terraform && terraform init && terraform apply');
+  }
+  L.push('');
+  L.push('# ── Setup del servidor ───────────────────────────────────');
+  L.push('setup:');
+  L.push('\tssh -p 2222 root@' + IP + " 'bash -s' < scripts/setup.sh");
+  L.push('');
+  L.push('# ── Deploy ───────────────────────────────────────────────');
+  L.push('deploy:');
+  if (scenario === 3) {
+    L.push('\tssh -p 2222 deploy@' + IP + " 'cd /opt/proyecto && docker stack deploy -c docker-compose.yml proyecto'");
+  } else {
+    L.push('\tssh -p 2222 deploy@' + IP + " 'cd /opt/proyecto && docker compose up -d'");
+  }
+  L.push('');
+  L.push('# ── Operaciones ──────────────────────────────────────────');
+  L.push('logs:');
+  L.push('\tssh -p 2222 deploy@' + IP + " 'cd /opt/proyecto && docker compose logs -f --tail=50'");
+  L.push('');
+  L.push('status:');
+  L.push('\tssh -p 2222 deploy@' + IP + " 'cd /opt/proyecto && docker compose ps && docker stats --no-stream'");
+  L.push('');
+  L.push('backup:');
+  L.push('\tssh -p 2222 deploy@' + IP + " 'cd /opt/proyecto && bash scripts/backup.sh'");
+  L.push('');
+  L.push('rollback:');
+  L.push('\tssh -p 2222 deploy@' + IP + " 'cd /opt/proyecto && docker compose pull && docker compose up -d'");
+  L.push('');
+  L.push('# ── SSH shortcuts ─────────────────────────────────────────');
+  L.push('ssh-app:');
+  L.push('\tssh -p 2222 deploy@' + IP);
+  return L.join('\n') + '\n';
+}
+function generateBackup(nodes, vpsConfig) {
+  var stNode   = nodes.find(function(n){return n.type==='storage';});
+  var provider = (stNode && stNode.config && stNode.config.provider) || 'wasabi';
+  var endpoint = getS3Endpoint(provider);
+  return `#!/usr/bin/env bash
+# backup.sh — generado por InfraDraw
+# Backup automático de PostgreSQL → Object Storage (S3-compatible)
+# Proveedor de storage detectado: ${provider}
+set -euo pipefail
+
+# ── Configuración ────────────────────────────────────────
+PROJECT_DIR="/opt/proyecto"
+BACKUP_DIR="\${PROJECT_DIR}/backups"
+LOG_FILE="/var/log/backup.log"
+RETENTION_LOCAL_DAYS=2
+RETENTION_REMOTE_DAYS=30
+S3_PREFIX="postgres"
+S3_ENDPOINT_DEFAULT="${endpoint}"
+CRON_SCHEDULE="0 3 * * *"
+
+# ── Logging ──────────────────────────────────────────────
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "\$LOG_FILE"; }
+
+mkdir -p "\$BACKUP_DIR"
+touch "\$LOG_FILE"
+
+command -v docker >/dev/null || { log "ERROR: docker no disponible"; exit 1; }
+command -v aws    >/dev/null || { log "ERROR: aws-cli no instalado (apt install awscli)"; exit 1; }
+
+# ── Cargar variables de entorno ──────────────────────────
+if [ -f "\${PROJECT_DIR}/.env" ]; then
+  set -a; . "\${PROJECT_DIR}/.env"; set +a
+fi
+DB_USER="\${DB_USER:-appuser}"
+DB_NAME="\${DB_NAME:-appdb}"
+S3_BUCKET="\${S3_BUCKET:?S3_BUCKET no definido en .env}"
+S3_ENDPOINT="\${S3_ENDPOINT:-\$S3_ENDPOINT_DEFAULT}"
+S3_REGION="\${S3_REGION:-us-east-1}"
+
+TS="$(date '+%Y%m%d_%H%M%S')"
+DUMP_FILE="\${BACKUP_DIR}/\${DB_NAME}_\${TS}.dump"
+
+log "──────── Inicio de backup ────────"
+
+# ── 1. Dump de PostgreSQL (formato custom, compress=9) ───
+log "pg_dump de '\$DB_NAME' (formato custom, compress=9)"
+docker exec postgres pg_dump -U "\$DB_USER" -d "\$DB_NAME" -Fc -Z 9 > "\$DUMP_FILE"
+log "Dump completado ($(du -h "\$DUMP_FILE" | cut -f1))"
+
+# ── 2. Subida a Object Storage ───────────────────────────
+log "Subiendo a s3://\${S3_BUCKET}/\${S3_PREFIX}/"
+aws s3 cp "\$DUMP_FILE" "s3://\${S3_BUCKET}/\${S3_PREFIX}/$(basename "\$DUMP_FILE")" \\
+  --endpoint-url "\$S3_ENDPOINT" --region "\$S3_REGION"
+log "Subida completada"
+
+# ── 3. Limpieza local (> RETENTION_LOCAL_DAYS días) ──────
+log "Limpiando backups locales > \${RETENTION_LOCAL_DAYS}d"
+find "\$BACKUP_DIR" -maxdepth 1 -name '*.dump' -type f -mtime +\$RETENTION_LOCAL_DAYS -print -delete \\
+  | while read -r f; do log "  borrado local: \$f"; done
+
+# ── 4. Limpieza remota (> RETENTION_REMOTE_DAYS días) ────
+log "Limpiando backups remotos > \${RETENTION_REMOTE_DAYS}d"
+CUTOFF="$(date -d "-\${RETENTION_REMOTE_DAYS} days" '+%s')"
+aws s3api list-objects-v2 --bucket "\$S3_BUCKET" --prefix "\${S3_PREFIX}/" \\
+  --endpoint-url "\$S3_ENDPOINT" --region "\$S3_REGION" \\
+  --query 'Contents[].[Key,LastModified]' --output text 2>/dev/null \\
+  | while read -r KEY LASTMOD; do
+      [ -z "\$KEY" ] && continue
+      [ "\$KEY" = "None" ] && continue
+      OBJ_TS="$(date -d "\$LASTMOD" '+%s' 2>/dev/null || echo 0)"
+      if [ "\$OBJ_TS" -gt 0 ] && [ "\$OBJ_TS" -lt "\$CUTOFF" ]; then
+        aws s3 rm "s3://\${S3_BUCKET}/\$KEY" --endpoint-url "\$S3_ENDPOINT" --region "\$S3_REGION"
+        log "  borrado remoto: \$KEY"
+      fi
+    done
+
+log "──────── Backup finalizado ✓ ────────"
+
+# ── 5. Auto-registro en crontab (idempotente) ────────────
+CRON_LINE="\${CRON_SCHEDULE} cd \${PROJECT_DIR} && bash scripts/backup.sh >> \${LOG_FILE} 2>&1"
+if ! crontab -l 2>/dev/null | grep -Fq "scripts/backup.sh"; then
+  ( crontab -l 2>/dev/null; echo "\$CRON_LINE" ) | crontab -
+  log "Cron instalado: \$CRON_LINE"
+fi
+`;
+}
+function generateRestore(nodes, vpsConfig) {
+  var stNode   = nodes.find(function(n){return n.type==='storage';});
+  var provider = (stNode && stNode.config && stNode.config.provider) || 'wasabi';
+  var endpoint = getS3Endpoint(provider);
+  return `#!/usr/bin/env bash
+# restore.sh — generado por InfraDraw
+# Restaura un backup de PostgreSQL desde Object Storage (o local).
+# Uso: bash scripts/restore.sh <nombre_archivo>
+set -euo pipefail
+
+PROJECT_DIR="/opt/proyecto"
+BACKUP_DIR="\${PROJECT_DIR}/backups"
+LOG_FILE="/var/log/backup.log"
+S3_PREFIX="postgres"
+S3_ENDPOINT_DEFAULT="${endpoint}"
+
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "\$LOG_FILE"; }
+
+mkdir -p "\$BACKUP_DIR"; touch "\$LOG_FILE"
+
+command -v docker >/dev/null || { echo "ERROR: docker no disponible"; exit 1; }
+command -v aws    >/dev/null || { echo "ERROR: aws-cli no instalado"; exit 1; }
+
+# ── Cargar variables de entorno ──────────────────────────
+if [ -f "\${PROJECT_DIR}/.env" ]; then
+  set -a; . "\${PROJECT_DIR}/.env"; set +a
+fi
+DB_USER="\${DB_USER:-appuser}"
+DB_NAME="\${DB_NAME:-appdb}"
+S3_BUCKET="\${S3_BUCKET:?S3_BUCKET no definido en .env}"
+S3_ENDPOINT="\${S3_ENDPOINT:-\$S3_ENDPOINT_DEFAULT}"
+S3_REGION="\${S3_REGION:-us-east-1}"
+
+# ── Sin argumento: listar backups disponibles ────────────
+if [ \$# -lt 1 ]; then
+  echo "Uso: bash scripts/restore.sh <nombre_archivo>"
+  echo ""
+  echo "Backups remotos en s3://\${S3_BUCKET}/\${S3_PREFIX}/:"
+  aws s3 ls "s3://\${S3_BUCKET}/\${S3_PREFIX}/" --endpoint-url "\$S3_ENDPOINT" --region "\$S3_REGION" | sort || true
+  exit 1
+fi
+
+FILE="$(basename "\$1")"
+DUMP_PATH="\${BACKUP_DIR}/\${FILE}"
+
+# ── Descargar desde S3 si no existe en local ─────────────
+if [ ! -f "\$DUMP_PATH" ]; then
+  log "Descargando \$FILE desde s3://\${S3_BUCKET}/\${S3_PREFIX}/"
+  aws s3 cp "s3://\${S3_BUCKET}/\${S3_PREFIX}/\${FILE}" "\$DUMP_PATH" \\
+    --endpoint-url "\$S3_ENDPOINT" --region "\$S3_REGION"
+fi
+[ -f "\$DUMP_PATH" ] || { echo "ERROR: no se encontró el backup '\$FILE'"; exit 1; }
+
+# ── Confirmación explícita (restore DESTRUCTIVO) ─────────
+echo ""
+echo "⚠️  ADVERTENCIA — RESTORE DESTRUCTIVO"
+echo "Se SOBREESCRIBIRÁ la base de datos '\$DB_NAME' con el contenido de:"
+echo "    \$DUMP_PATH ($(du -h "\$DUMP_PATH" 2>/dev/null | cut -f1))"
+echo "Todos los datos actuales de '\$DB_NAME' se PERDERÁN de forma irreversible."
+echo ""
+read -r -p "Escribe el nombre de la base ('\$DB_NAME') para confirmar: " CONFIRM
+if [ "\$CONFIRM" != "\$DB_NAME" ]; then
+  echo "Confirmación incorrecta. Restore CANCELADO."
+  exit 1
+fi
+
+log "──────── Inicio de restore desde \$FILE ────────"
+docker exec -i postgres pg_restore -U "\$DB_USER" -d "\$DB_NAME" \\
+  --clean --if-exists --no-owner < "\$DUMP_PATH"
+log "──────── Restore finalizado ✓ ────────"
+echo "✅ Base de datos '\$DB_NAME' restaurada desde \$FILE"
+`;
+}
+function generateReadme(nodes, scenario, vpsConfig, cloudflareConfig) {
+  var provider = (vpsConfig && vpsConfig.provider) || 'hetzner';
+  var plan     = (vpsConfig && vpsConfig.plan) || 'cx31';
+  var isManual = provider === 'contabo';
+  var zone     = (cloudflareConfig && cloudflareConfig.zone) || 'tudominio.com';
+  var hasType  = function(t){return nodes.some(function(n){return n.type===t;});};
+  var scenarioName = scenario === 1 ? 'Single Node' : scenario === 2 ? 'Multi Node (App + DB separado)' : 'Multi Node HA';
+  return `# Infraestructura — generada por InfraDraw
+
+**Escenario:** ${scenarioName}
+**Proveedor:** ${provider} | **Plan:** ${plan}
+**Dominio:** ${zone}
+
+---
+
+## Prerrequisitos
+
+| Herramienta | Versión mínima | Instalar |
+|---|---|---|
+| Terraform | >= 1.5 | https://terraform.io/downloads |
+| Docker | >= 24.0 | https://get.docker.com |
+| Make | cualquiera | \`apt install make\` |
+| jq | cualquiera | \`apt install jq\` |
+
+---
+
+## Orden de deploy
+
+\`\`\`bash
+# 1. Configurar variables
+cp .env.example .env
+# Editar .env y completar TODOS los valores REQUERIDO
+
+# 2. Configurar Terraform
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+# Editar terraform.tfvars con tus tokens
+
+${isManual ? `# 3. Crear el servidor manualmente (ver PROVISION_MANUAL.md)
+# Una vez creado, copiar la IP en terraform.tfvars
+
+# 4. Setup del servidor
+make setup` : `# 3. Crear la infraestructura
+make provision
+# Nota: guarda las IPs del output para el siguiente paso
+
+# 4. Setup del servidor
+make setup`}
+
+# 5. Copiar archivos al servidor
+rsync -avz --exclude='.git' --exclude='node_modules' \\
+  -e 'ssh -p 2222' . deploy@<IP>:/opt/proyecto/
+
+# 6. Deploy
+make deploy
+
+# 7. Verificar
+curl https://${zone}/health
+\`\`\`
+
+---
+
+## Variables de entorno — dónde obtener cada valor
+
+| Variable | Cómo obtenerla |
+|---|---|
+${hasType('traefik') ? `| TRAEFIK_DASHBOARD_AUTH | \`htpasswd -nb admin tu_password\` |
+` : ''}${hasType('postgres') ? `| DB_PASSWORD | \`openssl rand -base64 32\` |
+` : ''}${hasType('redis') ? `| REDIS_PASSWORD | \`openssl rand -base64 24\` |
+` : ''}| JWT_SECRET | \`openssl rand -base64 64\` |
+${provider === 'hetzner' ? `| HCLOUD_TOKEN | https://console.hetzner.cloud → Security → API Tokens |
+` : ''}${provider === 'digitalocean' ? `| DO_TOKEN | https://cloud.digitalocean.com/account/api/tokens |
+` : ''}| CLOUDFLARE_API_TOKEN | https://dash.cloudflare.com/profile/api-tokens |
+| CLOUDFLARE_ZONE_ID | Cloudflare Dashboard → tu dominio → Overview (sidebar) |
+${hasType('ai') ? `| GEMINI_API_KEY | https://aistudio.google.com/apikey |
+` : ''}${hasType('storage') ? `| S3_ACCESS_KEY / S3_SECRET_KEY | Panel del proveedor de storage |
+` : ''}${hasType('email') ? `| RESEND_API_KEY | https://resend.com/api-keys |
+` : ''}
+
+---
+
+## Operaciones comunes
+
+\`\`\`bash
+make logs      # Ver logs en tiempo real
+make status    # Estado de contenedores + recursos
+make backup    # Backup manual de PostgreSQL
+make rollback  # Volver a la versión anterior
+make ssh-app   # SSH directo al servidor
+\`\`\`
+${hasType('postgres') ? `
+---
+
+## Backups
+
+Backup automático de PostgreSQL hacia Object Storage (S3-compatible),
+programado vía cron a las **3:00 AM diario** (\`scripts/backup.sh\` se
+auto-registra en el crontab la primera vez que se ejecuta).
+
+**Dónde se guardan:**
+- Remoto: \`s3://$S3_BUCKET/postgres/\` — retención **30 días**
+- Local: \`/opt/proyecto/backups/\` — retención **2 días**
+- Logs: \`/var/log/backup.log\`
+
+**Backup manual:**
+\`\`\`bash
+make backup
+# o, dentro del servidor:
+cd /opt/proyecto && bash scripts/backup.sh
+\`\`\`
+
+**Restaurar un backup:**
+\`\`\`bash
+# Sin argumentos: lista los backups remotos disponibles
+bash scripts/restore.sh
+
+# Restaura uno concreto (descarga de S3 si no está en local):
+bash scripts/restore.sh appdb_20260607_030000.dump
+\`\`\`
+El restore es **destructivo**: sobreescribe la base de datos actual. El script
+exige escribir el nombre de la base de datos para confirmar antes de continuar.
+
+**Verificar el último backup:**
+\`\`\`bash
+# Último objeto remoto y su tamaño:
+aws s3 ls s3://$S3_BUCKET/postgres/ --endpoint-url $S3_ENDPOINT --recursive | sort | tail -n1
+
+# En el servidor, tamaño de los dumps locales y log reciente:
+make ssh-app
+ls -lh /opt/proyecto/backups/   # un dump válido pesa >> 1 KB; ~0 indica fallo
+tail -n 20 /var/log/backup.log
+\`\`\`
+` : ''}
+---
+
+## Troubleshooting
+
+**SSL no renueva:**
+Cloudflare debe estar en modo DNS-only (gris) durante la primera renovación ACME.
+\`docker compose logs traefik | grep acme\`
+
+**Contenedor en restart loop:**
+\`docker compose logs --tail=50 <servicio>\`
+\`dmesg | grep -i oom\` — verificar si es OOM Kill
+
+**PostgreSQL sin conexiones disponibles:**
+\`docker exec postgres psql -U $DB_USER -c "SELECT count(*), state FROM pg_stat_activity GROUP BY state;"\`
+Solución inmediata: reiniciar backend. Solución permanente: habilitar PgBouncer.
+
+**Deploy falla en CI/CD:**
+Verificar que \`REGISTRY\`, \`HCLOUD_TOKEN\` y \`SSH_PRIVATE_KEY\` están en GitHub Secrets.
+`;
+}
+
+// ── Migración de nodos deprecados ─────────────────
+var DEPRECATED_NODES = {
+  wasabi:     { newType:'storage',  config:{ provider:'wasabi' } },
+  minio:      { newType:'storage',  config:{ provider:'wasabi' } },
+  r2:         { newType:'storage',  config:{ provider:'cloudflare_r2' } },
+  backblaze:  { newType:'storage',  config:{ provider:'backblaze_b2' } },
+  hetzner_os: { newType:'storage',  config:{ provider:'hetzner_os' } },
+  smtp:       { newType:'email',    config:{ provider:'resend' } },
+  resend:     { newType:'email',    config:{ provider:'resend' } },
+  pgbouncer:  { newType:'postgres', config:{ pgbouncer_enabled:true } },
+  hetzner:    { newType:'vps',      config:{ provider:'hetzner', plan:'cx31' } },
+  nginx:      { newType:'traefik',  config:{} },
+  sentry:     { newType:null },
+  cicd:       { newType:null },
+  easypanel:  { newType:null }
+};
+function migrateNodes(data) {
+  var migrated=[],removed=[];
+  if(!data||!Array.isArray(data.nodes))return{data:data,migrated:migrated,removed:removed};
+  data.nodes=data.nodes.map(function(node){
+    var m=DEPRECATED_NODES[node.type];
+    if(!m)return node;
+    if(m.newType===null){removed.push(node.label||node.type);return null;}
+    migrated.push({from:node.label||node.type,to:m.newType});
+    return Object.assign({},node,{type:m.newType,config:Object.assign({},node.config||{},m.config)});
+  }).filter(Boolean);
+  return{data:data,migrated:migrated,removed:removed};
+}
+
 function App() {
   // Canvas state
   var [nodes,setNodes]=useState([]); var [areas,setAreas]=useState([]); var [notes,setNotes]=useState([]); var [conns,setConns]=useState([]);
@@ -228,6 +1881,10 @@ function App() {
   var [cursorWorld,setCursorWorld]=useState(null);
   var [undoCount,setUndoCount]=useState(0);
   var [showExportMenu,setShowExportMenu]=useState(false);
+  var [configNodeId,setConfigNodeId]=useState(null);
+  var [configAreaId,setConfigAreaId]=useState(null);
+  var [showValidation,setShowValidation]=useState(false);
+  var [migrationInfo,setMigrationInfo]=useState(null);
   // Project state
   var [projectId,setProjectId]=useState(null);
   var [projectName,setProjectName]=useState('Sin nombre');
@@ -289,7 +1946,9 @@ function App() {
     fetch('/api/project?id='+id).then(function(r){return r.json();}).then(function(data){
       if(data.error){alert('Proyecto no encontrado');window.location.href='/';return;}
       if(data.canvas){
-        var s=sanitizeCanvas(data.canvas);
+        var mig=migrateNodes(data.canvas);
+        if(mig.migrated.length||mig.removed.length)setMigrationInfo({migrated:mig.migrated,removed:mig.removed});
+        var s=sanitizeCanvas(mig.data);
         setNodes(s.nodes);setAreas(s.areas);setNotes(s.notes);setConns(s.conns);
         if(data.canvas.transform)setTransform(data.canvas.transform);
       }
@@ -338,8 +1997,8 @@ function App() {
     setNotes(function(p){return p.concat([{id,x:wx-NOTE_DEF_W/2,y:wy-NOTE_DEF_H/2,w:NOTE_DEF_W,h:NOTE_DEF_H,text:'',colorIdx:0}]);});
     setSelectedNoteId(id);setSelectedId(null);setSelectedAreaId(null);
   }
-  function deleteNode(id){if(!id)return;pushHistory();setNodes(function(p){return p.filter(function(n){return n.id!==id;});});setConns(function(p){return p.filter(function(c){return c.from!==id&&c.to!==id;});});if(selectedIdRef.current===id)setSelectedId(null);if(connectSourceRef.current===id){setConnectSource(null);setCursorWorld(null);}}
-  function deleteArea(id){if(!id)return;pushHistory();setAreas(function(p){return p.filter(function(a){return a.id!==id;});});if(selectedAreaIdRef.current===id)setSelectedAreaId(null);}
+  function deleteNode(id){if(!id)return;pushHistory();setNodes(function(p){return p.filter(function(n){return n.id!==id;});});setConns(function(p){return p.filter(function(c){return c.from!==id&&c.to!==id;});});if(selectedIdRef.current===id)setSelectedId(null);if(connectSourceRef.current===id){setConnectSource(null);setCursorWorld(null);}setConfigNodeId(function(c){return c===id?null:c;});}
+  function deleteArea(id){if(!id)return;pushHistory();setAreas(function(p){return p.filter(function(a){return a.id!==id;});});if(selectedAreaIdRef.current===id)setSelectedAreaId(null);setConfigAreaId(function(c){return c===id?null:c;});}
   function deleteNote(id){if(!id)return;pushHistory();setNotes(function(p){return p.filter(function(n){return n.id!==id;});});if(selectedNoteIdRef.current===id)setSelectedNoteId(null);}
   function addConnection(from,to){if(from===to)return;setConns(function(p){for(var i=0;i<p.length;i++){if((p[i].from===from&&p[i].to===to)||(p[i].from===to&&p[i].to===from))return p;}return p.concat([{id:uid(),from,to}]);});}
   function handleNodeClick(id){if(!connectModeRef.current){setSelectedId(id);setSelectedAreaId(null);setSelectedNoteId(null);return;}var src=connectSourceRef.current;if(src==null){setConnectSource(id);setSelectedId(id);}else if(src!==id){pushHistory();addConnection(src,id);setConnectSource(null);setCursorWorld(null);}else{setConnectSource(null);setCursorWorld(null);}}
@@ -347,9 +2006,101 @@ function App() {
   function commitAreaLabel(id,val){var v=(val||'').trim();pushHistory();setAreas(function(p){return p.map(function(a){return a.id===id?Object.assign({},a,{label:v||a.label}):a;});});setEditingAreaId(null);}
   function commitNoteText(id,text){pushHistory();setNotes(function(p){return p.map(function(n){return n.id===id?Object.assign({},n,{text}):n;});});setEditingNoteId(null);}
   function cycleNoteColor(id){pushHistory();setNotes(function(p){return p.map(function(n){return n.id===id?Object.assign({},n,{colorIdx:((n.colorIdx||0)+1)%NOTE_COLORS.length}):n;});});}
+  function updateNodeConfig(id,key,value){
+    setNodes(function(p){return p.map(function(n){
+      if(n.id!==id)return n;
+      var cfg=Object.assign({},n.config||{});cfg[key]=value;
+      var schema=getNodeSchema(n.type);
+      if(schema)schema.fields.forEach(function(f){
+        if(f.type==='select_dynamic'&&f.dependsOn===key){
+          var opts=(f.options&&f.options[value])||[];
+          if(opts.indexOf(cfg[f.key])===-1)cfg[f.key]=opts[0];
+        }
+      });
+      var upd=Object.assign({},n,{config:cfg});
+      var auto=computeAutoLabel(n.type,cfg);
+      if(auto)upd.label=auto;
+      return upd;
+    });});
+  }
+  function updateAreaConfig(id,key,value){
+    setAreas(function(p){return p.map(function(a){
+      if(a.id!==id)return a;
+      var cfg=Object.assign({},a.config||{});cfg[key]=value;
+      var schema=getNodeSchema(a.type);
+      if(schema)schema.fields.forEach(function(f){
+        if(f.type==='select_dynamic'&&f.dependsOn===key){
+          var opts=(f.options&&f.options[value])||[];
+          if(opts.indexOf(cfg[f.key])===-1)cfg[f.key]=opts[0];
+        }
+      });
+      return Object.assign({},a,{config:cfg});
+    });});
+  }
 
   // ---- Export / Import ----
   function exportJSON(){var data=JSON.stringify({version:1,nodes:toRelativeNodes(nodes,areas),areas,notes,conns,transform},null,2);var blob=new Blob([data],{type:'application/json'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='infradraw-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
+
+  function exportProject(){
+    var res=validateArchitecture(nodesRef.current,areasRef.current,connsRef.current);
+    if(res.errors.length||res.warnings.length){setShowValidation(true);return;}
+    doExportZip();
+  }
+  function doExportZip(){
+    if(typeof JSZip==='undefined'){alert('No se pudo cargar JSZip. Revisa tu conexión a internet.');return;}
+    var nodes=nodesRef.current,areas=areasRef.current;
+    if(!nodes.length){alert('El canvas está vacío. Agrega servicios para exportar el proyecto.');return;}
+    var det=detectScenario(nodes);
+    var scenario=det.scenario,vpsNodes=det.vpsNodes;
+    var vpsConfig=(vpsNodes[0]&&vpsNodes[0].config)||{};
+    var cfNode=nodes.find(function(n){return n.type==='cloudflare';});
+    var cloudflareConfig=(cfNode&&cfNode.config)||{};
+    var trNode=nodes.find(function(n){return n.type==='traefik';});
+    var provider=vpsConfig.provider||'hetzner';
+    var isManual=provider==='contabo';
+    var needsTerraform=['hetzner','digitalocean','vultr','linode'].indexOf(provider)!==-1;
+    var ramGB=getPlanRAM(provider,vpsConfig.plan||'cx31');
+    var has=function(t){return nodes.some(function(n){return n.type===t;});};
+    var zip=new JSZip();
+    zip.file('docker-compose.yml',generateCompose(nodes,areas,scenario,vpsConfig));
+    if(has('traefik')){
+      zip.file('config/traefik.yml',generateTraefikYml((trNode&&trNode.config&&trNode.config.cert_email)||'admin@tudominio.com'));
+      zip.file('config/middlewares.yml',generateMiddlewaresYml());
+    }
+    if(has('postgres'))zip.file('config/postgresql.conf',generatePostgresConf(ramGB));
+    if(has('redis')){
+      var rd=nodes.find(function(n){return n.type==='redis';});
+      zip.file('config/redis.conf',generateRedisConf((rd&&rd.config&&rd.config.maxmemory)||'1gb'));
+    }
+    zip.file('scripts/setup.sh',generateSetup(vpsConfig,nodes));
+    if(has('postgres')){
+      zip.file('scripts/backup.sh',generateBackup(nodes,vpsConfig));
+      zip.file('scripts/restore.sh',generateRestore(nodes,vpsConfig));
+    }
+    if(needsTerraform){
+      zip.file('terraform/main.tf',generateTerraform(nodes,vpsConfig,cloudflareConfig));
+      zip.file('terraform/variables.tf',generateTerraformVars(vpsConfig,cloudflareConfig));
+      zip.file('terraform/outputs.tf',generateTerraformOutputs(vpsNodes));
+      zip.file('terraform/terraform.tfvars.example',
+        '# Copia como terraform.tfvars y completa los valores\n'+
+        '# NUNCA subas terraform.tfvars a git\n\n'+
+        'hcloud_token         = ""\n'+
+        'ssh_public_key       = ""\n'+
+        'cloudflare_api_token = ""\n'+
+        'cloudflare_zone_id   = ""\n');
+    }
+    if(isManual)zip.file('PROVISION_MANUAL.md',generateManualProvision(vpsConfig));
+    zip.file('.env.example',generateEnv(nodes,vpsConfig,cloudflareConfig));
+    zip.file('.gitignore','.env\nterraform.tfvars\n.terraform/\n*.tfstate\n*.tfstate.backup\n');
+    zip.file('Makefile',generateMakefile(scenario,vpsConfig));
+    zip.file('README.md',generateReadme(nodes,scenario,vpsConfig,cloudflareConfig));
+    var slug=(cloudflareConfig.zone||projectNameRef.current||'proyecto').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'proyecto';
+    zip.generateAsync({type:'blob'}).then(function(blob){
+      var url=URL.createObjectURL(blob),lnk=document.createElement('a');
+      lnk.href=url;lnk.download='infradraw-'+slug+'-'+new Date().toISOString().slice(0,10)+'.zip';
+      document.body.appendChild(lnk);lnk.click();document.body.removeChild(lnk);URL.revokeObjectURL(url);
+    }).catch(function(err){alert('Error al generar el ZIP: '+err.message);});
+  }
 
   function exportPNG(){
     var allN=nodesRef.current,allA=areasRef.current,allNt=notesRef.current,allC=connsRef.current;
@@ -469,7 +2220,7 @@ function App() {
     return{nodes,areas,notes,conns,skipped};
   }
   function extractAndParseJSON(raw){try{return JSON.parse(raw);}catch(e){}var match=raw.match(/\{[\s\S]*\}/);if(match){try{return JSON.parse(match[0]);}catch(e){}}throw new Error('No se encontró JSON válido en el contenido');}
-  function onFileChange(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){try{var d=extractAndParseJSON(ev.target.result);if(!d.version)throw new Error('Formato no reconocido');if(d.version===2){var resolved=resolveLayout(d.layout,d.conns,d.notes);d=Object.assign({version:1},resolved);}var s=sanitizeCanvas(d);pushHistory();setNodes(s.nodes);setAreas(s.areas);setNotes(s.notes);setConns(s.conns);if(d.transform)setTransform(d.transform);clearSelection();if(s.skipped>0)alert('⚠️ '+s.skipped+' elemento(s) con tipo desconocido fueron ignorados al importar.\nEl resto del diagrama se cargó correctamente.');}catch(err){alert('Error al importar: '+err.message);}};reader.readAsText(file);}
+  function onFileChange(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){try{var d=extractAndParseJSON(ev.target.result);if(!d.version)throw new Error('Formato no reconocido');if(d.version===2){var resolved=resolveLayout(d.layout,d.conns,d.notes);d=Object.assign({version:1},resolved);}var mig=migrateNodes(d);if(mig.migrated.length||mig.removed.length)setMigrationInfo({migrated:mig.migrated,removed:mig.removed});d=mig.data;var s=sanitizeCanvas(d);pushHistory();setNodes(s.nodes);setAreas(s.areas);setNotes(s.notes);setConns(s.conns);if(d.transform)setTransform(d.transform);clearSelection();if(s.skipped>0)alert('⚠️ '+s.skipped+' elemento(s) con tipo desconocido fueron ignorados al importar.\nEl resto del diagrama se cargó correctamente.');}catch(err){alert('Error al importar: '+err.message);}};reader.readAsText(file);}
 
   // ---- Pointer handlers ----
   function startPan(e){var t=transformRef.current;inter.current={mode:'pan',sx:e.clientX,sy:e.clientY,ox:t.x,oy:t.y};}
@@ -506,7 +2257,7 @@ function App() {
   useEffect(function(){
     function onKeyDown(e){var tag=document.activeElement?document.activeElement.tagName:'',typing=tag==='INPUT'||tag==='TEXTAREA';
       if(e.code==='Space'&&!typing){spaceRef.current=true;e.preventDefault();}
-      if(e.key==='Escape'){setConnectSource(null);setCursorWorld(null);setEditingId(null);setEditingAreaId(null);setEditingNoteId(null);setConnectMode(false);clearSelection();setEditingName(false);}
+      if(e.key==='Escape'){setConnectSource(null);setCursorWorld(null);setEditingId(null);setEditingAreaId(null);setEditingNoteId(null);setConnectMode(false);clearSelection();setEditingName(false);setConfigNodeId(null);setConfigAreaId(null);setShowValidation(false);setMigrationInfo(null);}
       if((e.key==='Delete'||e.key==='Backspace')&&!typing){var nid=selectedIdRef.current,aid=selectedAreaIdRef.current,tnid=selectedNoteIdRef.current;if(nid)deleteNode(nid);else if(aid)deleteArea(aid);else if(tnid)deleteNote(tnid);}
       if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!typing){e.preventDefault();undo();}
     }
@@ -546,7 +2297,8 @@ function App() {
   var areaEls=areas.map(function(a){var def=AREA_TYPES[a.type];if(!def)return null;var isSel=a.id===selectedAreaId,swW=(isSel?2.5:2)/transform.scale;
     var labelEl=editingAreaId===a.id?h('foreignObject',{key:'fo',x:36,y:4,width:Math.max(80,a.w-50),height:26},h('input',{className:'edit-input',autoFocus:true,defaultValue:a.label,onPointerDown:function(e){e.stopPropagation();},onBlur:function(e){commitAreaLabel(a.id,e.target.value);},onKeyDown:function(e){if(e.key==='Enter')commitAreaLabel(a.id,e.target.value);if(e.key==='Escape')setEditingAreaId(null);}})):h('text',{key:'lbl',x:36,y:20,fill:def.color,fontSize:13/transform.scale,fontWeight:700,style:{pointerEvents:'none'}},a.label);
     var handleEls=isSel?HANDLES.map(function(hd){return h('circle',{key:hd.key,cx:hd.fx*a.w,cy:hd.fy*a.h,r:hrW,fill:'#0d1117',stroke:def.color,strokeWidth:hbW,style:{cursor:hd.cursor},onPointerDown:function(e){onAreaHandlePointerDown(e,a,hd.key);}});}):[];
-    return h('g',{key:a.id,transform:'translate('+a.x+','+a.y+')',onPointerDown:function(e){onAreaBodyPointerDown(e,a);},onDoubleClick:function(e){e.stopPropagation();setEditingAreaId(a.id);setSelectedAreaId(a.id);}},[h('rect',{key:'bg',width:a.w,height:a.h,rx:12,fill:def.fill,stroke:isSel?'#fff':def.color,strokeWidth:swW,strokeDasharray:def.dash||null,style:{cursor:'move'}}),h('rect',{key:'hb',x:swW,y:swW,width:a.w-swW*2,height:28,rx:10,fill:def.color,opacity:.18,style:{pointerEvents:'none'}}),h('rect',{key:'hb2',x:swW,y:18,width:a.w-swW*2,height:12,fill:def.color,opacity:.18,style:{pointerEvents:'none'}}),h('text',{key:'ico',x:14,y:22,fontSize:14/transform.scale,dominantBaseline:'middle',style:{pointerEvents:'none'}},def.icon),labelEl,handleEls]);
+    var areaGearEl=getNodeSchema(a.type)?h('text',{key:'gear',className:'node-gear',x:a.w-16,y:21,fontSize:15/transform.scale,fill:def.color,textAnchor:'middle',onPointerDown:function(e){e.stopPropagation();},onClick:function(e){e.stopPropagation();setConfigAreaId(a.id);setConfigNodeId(null);setSelectedAreaId(a.id);setSelectedId(null);setSelectedNoteId(null);}},'⚙'):null;
+    return h('g',{key:a.id,transform:'translate('+a.x+','+a.y+')',onPointerDown:function(e){onAreaBodyPointerDown(e,a);},onDoubleClick:function(e){e.stopPropagation();setEditingAreaId(a.id);setSelectedAreaId(a.id);}},[h('rect',{key:'bg',width:a.w,height:a.h,rx:12,fill:def.fill,stroke:isSel?'#fff':def.color,strokeWidth:swW,strokeDasharray:def.dash||null,style:{cursor:'move'}}),h('rect',{key:'hb',x:swW,y:swW,width:a.w-swW*2,height:28,rx:10,fill:def.color,opacity:.18,style:{pointerEvents:'none'}}),h('rect',{key:'hb2',x:swW,y:18,width:a.w-swW*2,height:12,fill:def.color,opacity:.18,style:{pointerEvents:'none'}}),h('text',{key:'ico',x:14,y:22,fontSize:14/transform.scale,dominantBaseline:'middle',style:{pointerEvents:'none'}},def.icon),labelEl,areaGearEl,handleEls]);
   });
   var noteEls=notes.map(function(nt){var c=NOTE_COLORS[clamp(nt.colorIdx||0,0,NOTE_COLORS.length-1)]||NOTE_COLORS[0];if(!c)return null;var isSel=nt.id===selectedNoteId,isEditing=nt.id===editingNoteId,sw=(isSel?2.5:1.5)/transform.scale,hdrH=26,bodyY=hdrH+2,bodyH=nt.h-bodyY-6,fs=12/transform.scale;
     var bodyEl=h('foreignObject',{key:'body',x:6,y:bodyY,width:nt.w-12,height:bodyH},isEditing?h('textarea',{autoFocus:true,defaultValue:nt.text,style:{width:'100%',height:'100%',background:'transparent',border:'none',outline:'none',resize:'none',fontSize:fs+'px',color:c.text,fontFamily:'inherit',lineHeight:'1.5',padding:'2px'},onPointerDown:function(e){e.stopPropagation();},onBlur:function(e){commitNoteText(nt.id,e.target.value);},onKeyDown:function(e){if(e.key==='Escape')setEditingNoteId(null);e.stopPropagation();}}):h('div',{style:{fontSize:fs+'px',color:c.text,lineHeight:'1.5',wordBreak:'break-word',whiteSpace:'pre-wrap',overflow:'hidden',height:'100%',pointerEvents:'none',padding:'2px'}},nt.text||h('span',{style:{opacity:.45}},'Doble click para editar…')));
@@ -555,11 +2307,127 @@ function App() {
   });
   var nodeEls=nodes.map(function(n){var def=SERVICES[n.type];if(!def)return null;var isSel=n.id===selectedId,isSrc=n.id===connectSource,stroke=isSrc?'#4f8cff':(isSel?'#7aa2ff':'#2a3343'),strokeW=(isSel||isSrc)?2.5:1.5;
     var labelEl=editingId===n.id?h('foreignObject',{key:'fo',x:44,y:NODE_H/2-13,width:NODE_W-52,height:26},h('input',{className:'edit-input',autoFocus:true,defaultValue:n.label,onPointerDown:function(e){e.stopPropagation();},onBlur:function(e){commitLabel(n.id,e.target.value);},onKeyDown:function(e){if(e.key==='Enter')commitLabel(n.id,e.target.value);if(e.key==='Escape')setEditingId(null);}})):h('text',{key:'lbl',x:44,y:NODE_H/2+5,fill:'#e6edf3',fontSize:13,fontWeight:600,style:{pointerEvents:'none'}},n.label);
-    return h('g',{key:n.id,transform:'translate('+n.x+','+n.y+')',onPointerDown:function(e){onNodePointerDown(e,n);},onDoubleClick:function(e){e.stopPropagation();setEditingId(n.id);}},[h('rect',{key:'r',width:NODE_W,height:NODE_H,rx:12,fill:'#1c2230',stroke,strokeWidth:strokeW,filter:isSel?'drop-shadow(0 4px 14px rgba(79,140,255,.35))':'drop-shadow(0 2px 6px rgba(0,0,0,.4))'}),h('rect',{key:'ac',x:0,y:0,width:5,height:NODE_H,rx:2.5,fill:def.color}),h('rect',{key:'ib',x:12,y:NODE_H/2-14,width:28,height:28,rx:7,fill:def.color,opacity:.22}),h('text',{key:'ico',x:26,y:NODE_H/2+6,fontSize:16,textAnchor:'middle',style:{pointerEvents:'none'}},def.icon),labelEl]);
+    var gearEl=getNodeSchema(n.type)?h('text',{key:'gear',className:'node-gear',x:NODE_W-14,y:18,fontSize:15,fill:'#aeb6c2',textAnchor:'middle',onPointerDown:function(e){e.stopPropagation();},onClick:function(e){e.stopPropagation();setConfigNodeId(n.id);setConfigAreaId(null);setSelectedId(n.id);setSelectedAreaId(null);setSelectedNoteId(null);}},'⚙'):null;
+    return h('g',{key:n.id,transform:'translate('+n.x+','+n.y+')',onPointerDown:function(e){onNodePointerDown(e,n);},onDoubleClick:function(e){e.stopPropagation();setEditingId(n.id);}},[h('rect',{key:'r',width:NODE_W,height:NODE_H,rx:12,fill:'#1c2230',stroke,strokeWidth:strokeW,filter:isSel?'drop-shadow(0 4px 14px rgba(79,140,255,.35))':'drop-shadow(0 2px 6px rgba(0,0,0,.4))'}),h('rect',{key:'ac',x:0,y:0,width:5,height:NODE_H,rx:2.5,fill:def.color}),h('rect',{key:'ib',x:12,y:NODE_H/2-14,width:28,height:28,rx:7,fill:def.color,opacity:.22}),h('text',{key:'ico',x:26,y:NODE_H/2+6,fontSize:16,textAnchor:'middle',style:{pointerEvents:'none'}},def.icon),labelEl,gearEl]);
   });
   var defs=h('defs',{key:'defs'},[h('marker',{key:'a',id:'arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'},h('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#6b7689'})),h('marker',{key:'ab',id:'arrow-blue',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'},h('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#4f8cff'})),h('pattern',{key:'g',id:'grid',width:GRID,height:GRID,patternUnits:'userSpaceOnUse',patternTransform:'translate('+transform.x+','+transform.y+') scale('+transform.scale+')'},h('path',{d:'M '+GRID+' 0 L 0 0 0 '+GRID,fill:'none',stroke:'#1b2230',strokeWidth:1}))]);
   var worldGroup=h('g',{transform:'translate('+transform.x+','+transform.y+') scale('+transform.scale+')'},[h('g',{key:'areas'},areaEls),h('g',{key:'conns'},connEls),previewEl?h('g',{key:'prev'},[previewEl]):null,h('g',{key:'notes'},noteEls),h('g',{key:'nodes'},nodeEls)]);
   var svg=h('svg',{ref:svgRef,className:'canvas',onPointerDown:onBgPointerDown,onContextMenu:function(e){e.preventDefault();}},[defs,h('rect',{key:'bg',x:0,y:0,width:'100%',height:'100%',fill:'url(#grid)'}),worldGroup]);
+
+  // Config panel
+  function renderConfigField(item,field,schema,onChange){
+    var cur=item.config||{};
+    if(field.type==='select'){
+      var v=cur[field.key]!==undefined?cur[field.key]:field.default;
+      return h('select',{className:'cfg-select',value:v,onChange:function(e){onChange(field.key,e.target.value);}},
+        field.options.map(function(o){return h('option',{key:o,value:o},o);}));
+    }
+    if(field.type==='select_dynamic'){
+      var depField=schema.fields.filter(function(f){return f.key===field.dependsOn;})[0];
+      var depVal=cur[field.dependsOn]!==undefined?cur[field.dependsOn]:(depField?depField.default:undefined);
+      var opts=(field.options&&field.options[depVal])||[];
+      var dv=cur[field.key]!==undefined?cur[field.key]:field.default;
+      if(opts.indexOf(dv)===-1)dv=opts[0];
+      return h('select',{className:'cfg-select',value:dv,onChange:function(e){onChange(field.key,e.target.value);}},
+        opts.map(function(o){return h('option',{key:o,value:o},o);}));
+    }
+    if(field.type==='text'){
+      var tv=cur[field.key]!==undefined?cur[field.key]:field.default;
+      return h('input',{className:'cfg-input',type:'text',value:tv,onChange:function(e){onChange(field.key,e.target.value);}});
+    }
+    if(field.type==='multiselect'){
+      var arr=Array.isArray(cur[field.key])?cur[field.key]:(field.default||[]);
+      return h('div',{},field.options.map(function(o){
+        return h('label',{key:o,className:'cfg-check'},[
+          h('input',{type:'checkbox',checked:arr.indexOf(o)!==-1,onChange:function(e){
+            var na=arr.slice();
+            if(e.target.checked){if(na.indexOf(o)===-1)na.push(o);}else{na=na.filter(function(x){return x!==o;});}
+            onChange(field.key,na);
+          }}),o]);
+      }));
+    }
+    return null;
+  }
+  function renderToggle(item,field,onChange){
+    var cur=item.config||{};
+    var v=cur[field.key]!==undefined?cur[field.key]:field.default;
+    return h('label',{className:'toggle'},[
+      h('input',{key:'i',type:'checkbox',checked:!!v,onChange:function(e){onChange(field.key,e.target.checked);}}),
+      h('span',{key:'t',className:'track'},h('span',{className:'thumb'}))
+    ]);
+  }
+  function renderConfigPanelFor(item,kind){
+    var schema=getNodeSchema(item.type);
+    var meta=(kind==='area'?AREA_TYPES[item.type]:SERVICES[item.type])||{};
+    var onChange=kind==='area'?function(k,v){updateAreaConfig(item.id,k,v);}:function(k,v){updateNodeConfig(item.id,k,v);};
+    var close=kind==='area'?function(){setConfigAreaId(null);}:function(){setConfigNodeId(null);};
+    var emptyMsg=kind==='area'?'Esta área es solo un contenedor visual; no requiere configuración.':'Este nodo no requiere configuración adicional.';
+    var body;
+    if(!schema)body=h('div',{className:'cfg-empty'},emptyMsg);
+    else body=schema.fields.map(function(field){
+      if(field.type==='boolean')return h('div',{key:field.key,className:'cfg-field row'},[h('span',{className:'cfg-label'},field.label),renderToggle(item,field,onChange)]);
+      return h('div',{key:field.key,className:'cfg-field'},[h('label',{className:'cfg-label'},field.label),renderConfigField(item,field,schema,onChange)]);
+    });
+    return h('div',{className:'cfg-panel',onPointerDown:function(e){e.stopPropagation();}},[
+      h('div',{key:'head',className:'cfg-head'},[
+        h('div',{key:'t'},[h('div',{className:'cfg-title'},(meta.icon?meta.icon+' ':'')+(item.label||meta.label||item.type)),h('div',{className:'cfg-sub'},(schema?schema.label:(meta.label||item.type)))]),
+        h('button',{key:'x',className:'cfg-close',title:'Cerrar',onClick:close},'×')
+      ]),
+      h('div',{key:'body',className:'cfg-body'},body)
+    ]);
+  }
+  function renderConfigPanel(){
+    if(configNodeId){var node=nodes.filter(function(n){return n.id===configNodeId;})[0];if(node)return renderConfigPanelFor(node,'node');}
+    if(configAreaId){var area=areas.filter(function(a){return a.id===configAreaId;})[0];if(area)return renderConfigPanelFor(area,'area');}
+    return null;
+  }
+  var configPanel=renderConfigPanel();
+
+  // Architecture validation
+  var valRes=validateArchitecture(nodes,areas,conns);
+  var valTotal=valRes.errors.length+valRes.warnings.length;
+  function renderValidationModal(){
+    if(!showValidation)return null;
+    var hasErr=valRes.errors.length>0,hasWarn=valRes.warnings.length>0,items=[];
+    if(hasErr){items.push(h('div',{key:'et',className:'val-sec-title'},'Errores ('+valRes.errors.length+')'));valRes.errors.forEach(function(m,i){items.push(h('div',{key:'e'+i,className:'val-item val-err'},[h('span',{key:'ic'},'⛔'),h('span',{key:'m'},m)]));});}
+    if(hasWarn){items.push(h('div',{key:'wt',className:'val-sec-title'},'Advertencias ('+valRes.warnings.length+')'));valRes.warnings.forEach(function(m,i){items.push(h('div',{key:'w'+i,className:'val-item val-warn'},[h('span',{key:'ic'},'⚠️'),h('span',{key:'m'},m)]));});}
+    if(!hasErr&&!hasWarn)items.push(h('div',{key:'ok',className:'val-ok'},'✓ Arquitectura válida. Todo en orden.'));
+    var foot=[h('button',{key:'close',className:'btn',onClick:function(){setShowValidation(false);}},'Cerrar')];
+    if(!hasErr)foot.push(h('button',{key:'exp',className:'btn primary',onClick:function(){setShowValidation(false);doExportZip();}},hasWarn?'Exportar de todas formas':'Exportar proyecto'));
+    return h('div',{className:'modal-ov',onClick:function(){setShowValidation(false);}},
+      h('div',{className:'modal',onClick:function(e){e.stopPropagation();}},[
+        h('div',{key:'h',className:'modal-head'},h('div',{className:'modal-title'},'🔍 Validación de arquitectura')),
+        h('div',{key:'b',className:'modal-body'},items),
+        h('div',{key:'f',className:'modal-foot'},foot)
+      ]));
+  }
+  var validationModal=renderValidationModal();
+
+  function renderMigrationModal(){
+    if(!migrationInfo)return null;
+    var migrated=migrationInfo.migrated||[],removed=migrationInfo.removed||[],items=[];
+    items.push(h('div',{key:'sub',className:'val-sec-title'},'Este diagrama usa nodos de una versión anterior. Se aplicaron estas actualizaciones automáticamente:'));
+    if(migrated.length){
+      items.push(h('div',{key:'mt',className:'val-sec-title'},'Actualizados ('+migrated.length+')'));
+      migrated.forEach(function(m,i){
+        var toLabel=(SERVICES[m.to]&&SERVICES[m.to].label)||m.to;
+        items.push(h('div',{key:'m'+i,className:'val-item',style:{color:'#3ddc84'}},[h('span',{key:'ic'},'✓'),h('span',{key:'t'},m.from+' → '+toLabel)]));
+      });
+    }
+    if(removed.length){
+      items.push(h('div',{key:'rt',className:'val-sec-title'},'Eliminados ('+removed.length+')'));
+      removed.forEach(function(name,i){
+        items.push(h('div',{key:'r'+i,className:'val-item',style:{color:'#8a93a6'}},[h('span',{key:'ic'},'✗'),h('span',{key:'t'},name+' — eliminado (sin equivalente en el catálogo actual)')]));
+      });
+    }
+    return h('div',{className:'modal-ov',onClick:function(){setMigrationInfo(null);}},
+      h('div',{className:'modal',onClick:function(e){e.stopPropagation();}},[
+        h('div',{key:'h',className:'modal-head'},h('div',{className:'modal-title'},'♻️ Diagrama actualizado')),
+        h('div',{key:'b',className:'modal-body'},items),
+        h('div',{key:'f',className:'modal-foot'},[h('button',{key:'ok',className:'btn primary',onClick:function(){setMigrationInfo(null);}},'Entendido')])
+      ]));
+  }
+  var migrationModal=renderMigrationModal();
 
   // Toolbar
   var hasSelection=!!(selectedId||selectedAreaId||selectedNoteId);
@@ -584,9 +2452,11 @@ function App() {
     h('button',{key:'zi',className:'btn',onClick:function(){zoomBy(1.2);}},'+'),
     h('button',{key:'rv',className:'btn',onClick:fitToScreen},'⊡ Encuadrar'),
     h('div',{key:'s3',className:'btn-sep'}),
+    h('button',{key:'val',className:'btn val-badge',title:'Validar arquitectura',onClick:function(){setShowValidation(true);}},['🔍 Validar',valTotal>0?h('span',{key:'c',className:'val-count'+(valRes.errors.length?'':' warn')},String(valRes.errors.length||valRes.warnings.length)):null]),
     h('div',{key:'expW',className:'export-wrap',onClick:function(e){e.stopPropagation();}},[
       h('button',{key:'exp',className:'btn',onClick:function(){setShowExportMenu(function(v){return !v;});}},['📤 Exportar',' ▾']),
       showExportMenu?h('div',{key:'menu',className:'export-menu'},[
+        h('button',{key:'z',className:'btn',onClick:function(){setShowExportMenu(false);exportProject();}},'📦 Exportar proyecto (ZIP)'),
         h('button',{key:'j',className:'btn',onClick:function(){setShowExportMenu(false);exportJSON();}},'📄 Descargar JSON'),
         h('button',{key:'p',className:'btn',onClick:function(){setShowExportMenu(false);exportPNG();}},'🖼️ Exportar PNG'),
       ]):null
@@ -602,7 +2472,7 @@ function App() {
   var loadingOverlay=loading?h('div',{className:'loading-overlay'},[h('div',{key:'sp',className:'spinner'}),h('div',{key:'tx',style:{color:'var(--muted)',fontSize:14}},'Cargando proyecto…')]):null;
 
   var stage=h('div',{className:'stage',ref:stageRef,onDrop,onDragOver},[svg,toolbar,connectBadge,emptyHint,hints,fileInput,loadingOverlay]);
-  return h('div',{className:'app'},[sidebar,stage]);
+  return h('div',{className:'app'},[sidebar,stage,configPanel,validationModal,migrationModal]);
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(App));
