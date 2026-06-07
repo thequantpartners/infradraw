@@ -170,6 +170,54 @@ var HANDLES=[{key:"nw",fx:0,fy:0,cursor:"nwse-resize"},{key:"n",fx:.5,fy:0,curso
 function applyResize(it,wx,wy,minW,minH){var ddx=wx-it.startWX,ddy=wy-it.startWY,nx=it.origX,ny=it.origY,nw=it.origW,nh=it.origH,hk=it.handle;if(hk.includes("w")){nx=it.origX+ddx;nw=it.origW-ddx;}if(hk.includes("e"))nw=it.origW+ddx;if(hk.includes("n")){ny=it.origY+ddy;nh=it.origH-ddy;}if(hk.includes("s"))nh=it.origH+ddy;if(nw<minW){if(hk.includes("w"))nx=it.origX+it.origW-minW;nw=minW;}if(nh<minH){if(hk.includes("n"))ny=it.origY+it.origH-minH;nh=minH;}return{nx,ny,nw,nh};}
 function toRelativeNodes(nds,ars){var aById={};ars.forEach(function(a){aById[a.id]=a;});return nds.map(function(n){if(!n.parentId||!aById[n.parentId])return n;var a=aById[n.parentId];return Object.assign({},n,{x:n.x-a.x,y:n.y-a.y});});}
 
+// ---- v2 Layout Resolution ----
+var LAYOUT_NODE_W=140,LAYOUT_NODE_H=44,LAYOUT_GAP=24,LAYOUT_PAD=60;
+var COL_EXT=560,COL_NOTE=700;
+var ENTRY_TYPES_V2=['internet','cloudflare','waf','cicd'];
+
+function resolveContainer(container,start_y){
+  var nodes=[],areas=[];
+  var childNodes=(container.children||[]).filter(function(c){return !c.container;});
+  var childContainers=(container.children||[]).filter(function(c){return !!c.container;});
+  var inner_y=start_y+LAYOUT_PAD;
+  var max_width=0;
+  if(childNodes.length>0){
+    var row_width=childNodes.length*LAYOUT_NODE_W+(childNodes.length-1)*LAYOUT_GAP;
+    var row_start_x=-(row_width/2);
+    max_width=Math.max(max_width,row_width);
+    childNodes.forEach(function(node,i){nodes.push({id:node.id,type:node.type,label:node.label,x:row_start_x+i*(LAYOUT_NODE_W+LAYOUT_GAP),y:inner_y});});
+    inner_y+=LAYOUT_NODE_H+LAYOUT_GAP;
+  }
+  childContainers.forEach(function(sub){
+    var result=resolveContainer(sub,inner_y);
+    areas=areas.concat(result.areas);nodes=nodes.concat(result.nodes);
+    max_width=Math.max(max_width,result.width);inner_y=result.bottom+LAYOUT_GAP;
+  });
+  var area_w=max_width+LAYOUT_PAD*2;
+  var area_h=(inner_y+LAYOUT_PAD)-start_y;
+  areas.push({id:container.id,type:container.container,label:container.label,x:-(area_w/2),y:start_y,w:area_w,h:area_h});
+  return{nodes:nodes,areas:areas,width:area_w,bottom:start_y+area_h};
+}
+
+function resolveLayout(layoutTree,conns,notes){
+  var nodes=[],areas=[],cursor_y=-400;
+  var entryItems=(layoutTree||[]).filter(function(i){return !i.container&&ENTRY_TYPES_V2.indexOf(i.type)!==-1;});
+  var containerItems=(layoutTree||[]).filter(function(i){return !!i.container;});
+  var externalItems=(layoutTree||[]).filter(function(i){return !i.container&&ENTRY_TYPES_V2.indexOf(i.type)===-1;});
+  var entry_y=cursor_y;
+  entryItems.forEach(function(item){nodes.push({id:item.id,type:item.type,label:item.label,x:0,y:entry_y});entry_y+=LAYOUT_NODE_H+LAYOUT_GAP+60;});
+  cursor_y=entry_y;
+  containerItems.forEach(function(container){
+    var result=resolveContainer(container,cursor_y);
+    areas=areas.concat(result.areas);nodes=nodes.concat(result.nodes);
+    cursor_y=result.bottom+LAYOUT_GAP+60;
+  });
+  var ext_y=-400;
+  externalItems.forEach(function(item){nodes.push({id:item.id,type:item.type,label:item.label,x:COL_EXT,y:ext_y});ext_y+=LAYOUT_NODE_H+LAYOUT_GAP+40;});
+  var resolvedNotes=(notes||[]).map(function(note,i){return Object.assign({},note,{x:note.x||COL_NOTE,y:note.y||(-400+i*150),w:note.w||200,h:note.h||120});});
+  return{nodes:nodes,areas:areas,conns:conns||[],notes:resolvedNotes};
+}
+
 function App() {
   // Canvas state
   var [nodes,setNodes]=useState([]); var [areas,setAreas]=useState([]); var [notes,setNotes]=useState([]); var [conns,setConns]=useState([]);
@@ -420,7 +468,8 @@ function App() {
     var skipped=(rawN.length-nodes.length)+(rawA.length-areas.length);
     return{nodes,areas,notes,conns,skipped};
   }
-  function onFileChange(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){try{var d=JSON.parse(ev.target.result);if(!d.version)throw new Error('Formato no reconocido');var s=sanitizeCanvas(d);pushHistory();setNodes(s.nodes);setAreas(s.areas);setNotes(s.notes);setConns(s.conns);if(d.transform)setTransform(d.transform);clearSelection();if(s.skipped>0)alert('⚠️ '+s.skipped+' elemento(s) con tipo desconocido fueron ignorados al importar.\nEl resto del diagrama se cargó correctamente.');}catch(err){alert('Error al importar: '+err.message);}};reader.readAsText(file);}
+  function extractAndParseJSON(raw){try{return JSON.parse(raw);}catch(e){}var match=raw.match(/\{[\s\S]*\}/);if(match){try{return JSON.parse(match[0]);}catch(e){}}throw new Error('No se encontró JSON válido en el contenido');}
+  function onFileChange(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){try{var d=extractAndParseJSON(ev.target.result);if(!d.version)throw new Error('Formato no reconocido');if(d.version===2){var resolved=resolveLayout(d.layout,d.conns,d.notes);d=Object.assign({version:1},resolved);}var s=sanitizeCanvas(d);pushHistory();setNodes(s.nodes);setAreas(s.areas);setNotes(s.notes);setConns(s.conns);if(d.transform)setTransform(d.transform);clearSelection();if(s.skipped>0)alert('⚠️ '+s.skipped+' elemento(s) con tipo desconocido fueron ignorados al importar.\nEl resto del diagrama se cargó correctamente.');}catch(err){alert('Error al importar: '+err.message);}};reader.readAsText(file);}
 
   // ---- Pointer handlers ----
   function startPan(e){var t=transformRef.current;inter.current={mode:'pan',sx:e.clientX,sy:e.clientY,ox:t.x,oy:t.y};}
