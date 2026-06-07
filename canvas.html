@@ -2277,10 +2277,10 @@ function App() {
   // ======== RENDER ========
 
   // Sidebar
-  function makePalNode(key){var def=SERVICES[key];return h('div',{key,className:'pal-item',draggable:true,onDragStart:function(e){e.dataTransfer.setData('text/infradraw-node',key);},onClick:function(){paletteAddNode(key);}},[h('div',{key:'i',className:'pal-ico',style:{background:def.color}},def.icon),h('div',{key:'l',className:'pal-label'},def.label)]);}
+  function makePalNode(key){var def=SERVICES[key];return h('div',{key:'node-'+key,className:'pal-item',draggable:true,onDragStart:function(e){e.dataTransfer.setData('text/infradraw-node',key);},onClick:function(){paletteAddNode(key);}},[h('div',{key:'i',className:'pal-ico',style:{background:def.color}},def.icon),h('div',{key:'l',className:'pal-label'},def.label)]);}
   var svcGroups=[];
   PALETTE_GROUPS.forEach(function(group,gi){if(gi>0)svcGroups.push(h('div',{key:'gd'+gi,className:'palette-divider'}));svcGroups.push(h('div',{key:'gt'+gi,className:'palette-title'},group.title));group.keys.forEach(function(key){svcGroups.push(makePalNode(key));});});
-  var areaItems=AREA_ORDER.map(function(key){var def=AREA_TYPES[key];return h('div',{key,className:'pal-item',draggable:true,onDragStart:function(e){e.dataTransfer.setData('text/infradraw-area',key);},onClick:function(){paletteAddArea(key);}},[h('div',{key:'i',className:'pal-ico-area',style:{color:def.color}},def.icon),h('div',{key:'l',className:'pal-label'},def.label)]);});
+  var areaItems=AREA_ORDER.map(function(key){var def=AREA_TYPES[key];return h('div',{key:'area-'+key,className:'pal-item',draggable:true,onDragStart:function(e){e.dataTransfer.setData('text/infradraw-area',key);},onClick:function(){paletteAddArea(key);}},[h('div',{key:'i',className:'pal-ico-area',style:{color:def.color}},def.icon),h('div',{key:'l',className:'pal-label'},def.label)]);});
   var noteSwatches=NOTE_COLORS.map(function(c,i){return h('div',{key:i,className:'pal-swatch',style:{background:c.border}});});
   var noteItem=h('div',{className:'pal-item',draggable:true,onDragStart:function(e){e.dataTransfer.setData('text/infradraw-note','1');},onClick:paletteAddNote},[h('div',{key:'i',className:'pal-ico',style:{background:'#fef9c3',border:'1.5px solid #d4a017'}},'📝'),h('div',{key:'l',className:'pal-label'},'Nota'),h('div',{key:'s',className:'pal-note-swatches'},noteSwatches)]);
   var sidebar=h('div',{className:'sidebar'},[
