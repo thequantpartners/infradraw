@@ -1,7 +1,7 @@
 # InfraDraw 🛸
 
 > [!IMPORTANT]
-> **AI AGENT NOTICE**: If you are an AI agent, you **MUST** read [AGENTS.md](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/AGENTS.md) first to understand the workspace operating rules and context requirements before executing tasks.
+> **AI AGENT NOTICE**: If you are an AI agent, you **MUST** read [AGENTS.md](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/AGENTS.md) and [PCA_INDEX.md](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/PCA_INDEX.md) first to understand the workspace operating rules, context limitations, and closure procedures before performing any task.
 
 InfraDraw is a visual, Docker-first infrastructure design tool and compiler. It allows you to visually design your server topology (web servers, database nodes, load balancers, caching, and network segments) and compile them directly into production-ready IaC (Infrastructure as Code) configurations and automation scripts.
 
