@@ -14,7 +14,8 @@ function getPlanRAM(provider, plan) {
     digitalocean: { 's-1vcpu-2gb':2,'s-2vcpu-4gb':4,'s-4vcpu-8gb':8,'s-8vcpu-16gb':16 },
     contabo: { 'vps-s':8,'vps-m':16,'vps-l':30,'vds-s':8 },
     vultr: { 'vc2-1c-2gb':2,'vc2-2c-4gb':4,'vc2-4c-8gb':8,'vhf-2c-4gb':4,'vhf-4c-8gb':8 },
-    linode: { 'nanode-1gb':1,'linode-4gb':4,'linode-8gb':8,'linode-16gb':16,'dedicated-4gb':4,'dedicated-8gb':8 }
+    linode: { 'nanode-1gb':1,'linode-4gb':4,'linode-8gb':8,'linode-16gb':16,'dedicated-4gb':4,'dedicated-8gb':8 },
+    gcloud: { 'e2-micro':1, 'e2-small':2, 'e2-medium':4, 'e2-standard-2':8 }
   };
   var planKey = String(plan).split(' ')[0].toLowerCase();
   return (RAM[provider] && RAM[provider][planKey]) || 8;
@@ -26,7 +27,8 @@ function getPlanCost(provider, plan) {
     digitalocean: { 's-1vcpu-2gb':12,'s-2vcpu-4gb':24,'s-4vcpu-8gb':48,'s-8vcpu-16gb':96 },
     contabo: { 'vps-s':5.5,'vps-m':10.5,'vps-l':23.5,'vds-s':47 },
     vultr: { 'vc2-1c-2gb':12,'vc2-2c-4gb':24,'vc2-4c-8gb':48,'vhf-2c-4gb':28,'vhf-4c-8gb':56 },
-    linode: { 'nanode-1gb':5,'linode-4gb':24,'linode-8gb':48,'linode-16gb':96,'dedicated-4gb':36,'dedicated-8gb':72 }
+    linode: { 'nanode-1gb':5,'linode-4gb':24,'linode-8gb':48,'linode-16gb':96,'dedicated-4gb':36,'dedicated-8gb':72 },
+    gcloud: { 'e2-micro':7, 'e2-small':12, 'e2-medium':25, 'e2-standard-2':49 }
   };
   var planKey = String(plan).split(' ')[0].toLowerCase();
   return (COST[provider] && COST[provider][planKey]) || 0;
@@ -573,8 +575,8 @@ Contabo no tiene API pública. Sigue estos pasos manualmente:
 }
 function generateTerraform(nodes, vpsConfig, cloudflareConfig) {
   var provider    = (vpsConfig && vpsConfig.provider) || 'hetzner';
-  var plan        = String((vpsConfig && vpsConfig.plan) || 'cx31').split(' ')[0];
-  var region      = String((vpsConfig && vpsConfig.region) || 'nbg1').split(' ')[0];
+  var plan        = String((vpsConfig && vpsConfig.plan) || 'e2-medium').split(' ')[0];
+  var region      = String((vpsConfig && vpsConfig.region) || 'us-central1').split(' ')[0];
   var os          = (vpsConfig && vpsConfig.os) || 'ubuntu-24.04';
   var zone        = (cloudflareConfig && cloudflareConfig.zone) || 'tudominio.com';
   var vpsNodes    = nodes.filter(function(n){return n.type==='vps';});
@@ -689,6 +691,93 @@ resource "cloudflare_r2_bucket" "storage" {
 `;
   }
 
+  if (provider === 'gcloud') {
+    return `# terraform/main.tf — generado por InfraDraw
+# Proveedor: Google Cloud (GCP)
+
+terraform {
+  required_version = ">= 1.5"
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 4.0"
+    }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
+  }
+}
+
+provider "google" {
+  credentials = file(var.gcp_credentials_file)
+  project     = var.gcp_project_id
+  region      = "${region}"
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
+${multiVPS ? `# ── Red VPC ──────────────────────────────────────────────────
+resource "google_compute_network" "vpc_network" {
+  name                    = "proyecto-vpc"
+  auto_create_subnetworks = "true"
+}
+
+resource "google_compute_subnetwork" "subnet" {
+  name          = "proyecto-subnet"
+  ip_cidr_range = "10.0.1.0/24"
+  region        = "${region}"
+  network       = google_compute_network.vpc_network.id
+}` : ''}
+
+# ── Firewall ──────────────────────────────────────────────
+resource "google_compute_firewall" "allow_http_ssh" {
+  name    = "allow-http-ssh"
+  network = ${multiVPS ? 'google_compute_network.vpc_network.name' : '"default"'}
+
+  allow { protocol = "tcp"; ports    = ["2222", "80", "443"] }
+  source_ranges = ["0.0.0.0/0"]
+}
+
+${vpsNodes.map(function(vps, i){ var role=(vps.config&&vps.config.role)||'app'; return `
+# ── Instancia ${role}_${i+1} ───────────────────────────────────────
+resource "google_compute_instance" "${role}_${i+1}" {
+  name         = "proyecto-${role}-${i+1}"
+  machine_type = "${plan}"
+  zone         = "${region}-a"
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+    }
+  }
+
+  network_interface {
+    network = ${multiVPS ? 'google_compute_network.vpc_network.name' : '"default"'}
+    ${multiVPS ? 'subnetwork = google_compute_subnetwork.subnet.name' : ''}
+    access_config { }
+  }
+
+  metadata = {
+    ssh-keys = "deploy:\${var.ssh_public_key}"
+  }
+
+  metadata_startup_script = file("../scripts/setup.sh")
+}`; }).join('\n')}
+
+# ── Cloudflare DNS ────────────────────────────────────────
+resource "cloudflare_record" "root" {
+  zone_id = var.cloudflare_zone_id
+  name    = "@"
+  value   = google_compute_instance.${role0}_1.network_interface.0.access_config.0.nat_ip
+  type    = "A"
+  proxied = true
+}
+`;
+  }
+
   if (provider === 'digitalocean') {
     return `# terraform/main.tf — generado por InfraDraw
 # Proveedor: DigitalOcean
@@ -763,6 +852,20 @@ function generateTerraformVars(vpsConfig, cloudflareConfig) {
 
 `;
   }
+  if (provider === 'gcloud') {
+    out += `variable "gcp_project_id" {
+  description = "ID del proyecto en Google Cloud"
+  type        = string
+}
+
+variable "gcp_credentials_file" {
+  description = "Ruta al archivo JSON de credenciales de la cuenta de servicio de GCP"
+  type        = string
+  default     = "../gcp-credentials.json"
+}
+
+`;
+  }
   if (provider === 'digitalocean') {
     out += `variable "do_token" {
   description = "DigitalOcean API Token"
@@ -812,13 +915,17 @@ variable "r2_bucket_name" {
 ` : ''}`;
   return out;
 }
-function generateTerraformOutputs(vpsNodes) {
+function generateTerraformOutputs(vpsNodes, vpsConfig) {
+  var provider = (vpsConfig && vpsConfig.provider) || 'hetzner';
   var out = `# terraform/outputs.tf — generado por InfraDraw\n\n`;
   vpsNodes.forEach(function(vps, i){
     var role = (vps.config && vps.config.role) || 'app';
+    var ip_value = \`hcloud_server.\${role}_\${i+1}.ipv4_address\`;
+    if (provider === 'digitalocean') ip_value = \`digitalocean_droplet.\${role}_\${i+1}.ipv4_address\`;
+    if (provider === 'gcloud') ip_value = \`google_compute_instance.\${role}_\${i+1}.network_interface.0.access_config.0.nat_ip\`;
     out += `output "${role}_${i+1}_ip" {
   description = "IP pública del servidor ${role} #${i+1}"
-  value       = hcloud_server.${role}_${i+1}.ipv4_address
+  value       = ${ip_value}
 }
 
 `;
@@ -916,6 +1023,17 @@ GRAFANA_PASSWORD=          # REQUERIDO
   out += `# ── JWT ─────────────────────────────────────────────────
 JWT_SECRET=                # REQUERIDO — generar: openssl rand -base64 64
 `;
+  if (hasType('devopsbot')) {
+    var botNode = getNode('devopsbot');
+    var token = (botNode && botNode.config && botNode.config.telegram_token) || 'TU_TOKEN';
+    var chatId = (botNode && botNode.config && botNode.config.chat_id) || 'TU_CHAT_ID';
+    out += `
+# ── DevOps Bot ──────────────────────────────────────────
+TELEGRAM_BOT_TOKEN=${token}
+TELEGRAM_CHAT_ID=${chatId}
+GEMINI_API_KEY=            # Añadir si se requieren sugerencias de IA
+`;
+  }
   return out;
 }
 function generateMakefile(scenario, vpsConfig) {

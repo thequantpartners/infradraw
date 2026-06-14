@@ -21,3 +21,5 @@
 - [x] Configuración inicial e integración de PCA (Project Context Architecture) para la gestión del contexto.
 - [x] Implementación de mejoras de experiencia de usuario: Snap-to-Grid, expansión del catálogo (Supabase, Cron) y badge dinámico de simulación de costos.
 - [x] Creación del CLI de InfraDraw desacoplado (`infradraw-cli`) con comandos de validación, compilación a IaC y creación interactiva de topologías desde la terminal.
+- [x] Integración de Google Cloud (GCP) como proveedor principal con despliegue completo de Terraform.
+- [x] Creación de un asistente DevOps en Telegram embebido en la topología para monitorización de salud y reinicio de contenedores.

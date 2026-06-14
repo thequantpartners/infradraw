@@ -7,6 +7,9 @@
 - Creación de topologías de arquitectura de manera no interactiva usando `infradraw create --non-interactive` y flags de configuración.
 - Nuevo comando `infradraw schema` para imprimir las plataformas, planes, regiones, frameworks y bases de datos soportados en formato JSON.
 - Banner de redirección en `README.md` y guías actualizadas en `AGENTS.md` para instruir a agentes de IA sobre el uso de la CLI y reglas del entorno.
+- Integración nativa de Google Cloud (GCP) en el compilador web y CLI, incluyendo soporte de planes e2, red VPC y generación de `google_compute_instance`.
+- Inclusión del nuevo nodo 'DevOps Bot' (Telegram) para la gestión y monitorización activa de contenedores Docker mediante comandos interactivos en chat.
+- Exportación automatizada del bot en Node.js dentro del subdirectorio `bot/` al compilar la arquitectura.
 
 ## [Unreleased] - 2026-06-13
 

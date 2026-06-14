@@ -77,7 +77,7 @@ function validateTopology(data) {
     const config = n.config || {};
 
     if (n.type === 'vps') {
-      const allowedProviders = ['hetzner', 'digitalocean', 'contabo', 'vultr', 'linode'];
+      const allowedProviders = ['hetzner', 'digitalocean', 'contabo', 'vultr', 'linode', 'gcloud'];
       if (!config.provider) {
         errors.push(`El nodo VPS '${n.id}' no especifica un proveedor ('config.provider').`);
       } else if (!allowedProviders.includes(config.provider)) {
@@ -195,7 +195,7 @@ program
       if (needsTerraform) {
         await write('terraform/main.tf', generateTerraform(nodes, vpsConfig, cloudflareConfig));
         await write('terraform/variables.tf', generateTerraformVars(vpsConfig, cloudflareConfig));
-        await write('terraform/outputs.tf', generateTerraformOutputs(vpsNodes));
+        await write('terraform/outputs.tf', generateTerraformOutputs(vpsNodes, vpsConfig));
         const tfvarsExample = '# Copia como terraform.tfvars y completa los valores\n' +
           '# NUNCA subas terraform.tfvars a git\n\n' +
           'hcloud_token         = ""\n' +
@@ -203,6 +203,53 @@ program
           'cloudflare_api_token = ""\n' +
           'cloudflare_zone_id   = ""\n';
         await write('terraform/terraform.tfvars.example', tfvarsExample);
+      }
+
+      if (has('devopsbot')) {
+        await write('bot/Dockerfile', 'FROM node:20-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nCMD ["node", "index.js"]\n');
+        await write('bot/package.json', '{\n  "name": "devops-bot",\n  "version": "1.0.0",\n  "main": "index.js",\n  "dependencies": {\n    "node-telegram-bot-api": "^0.65.0",\n    "dockerode": "^3.3.5",\n    "@google/genai": "^0.1.1"\n  }\n}\n');
+        await write('bot/index.js', `const TelegramBot = require('node-telegram-bot-api');
+const Docker = require('dockerode');
+const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+
+const token = process.env.TELEGRAM_BOT_TOKEN;
+const chatId = process.env.TELEGRAM_CHAT_ID;
+const bot = new TelegramBot(token, { polling: true });
+
+async function checkHealth() {
+  try {
+    const containers = await docker.listContainers({ all: true });
+    for (const c of containers) {
+      if (c.State !== 'running' && c.State !== 'exited') {
+         bot.sendMessage(chatId, \`⚠️ Alerta: Contenedor \${c.Names[0]} está en estado \${c.State}.\`, {
+           reply_markup: {
+             inline_keyboard: [[{ text: 'Reiniciar Contenedor', callback_data: \`restart_\${c.Id}\` }]]
+           }
+         });
+      }
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+bot.on('callback_query', async (query) => {
+  if (query.data.startsWith('restart_')) {
+    const id = query.data.split('_')[1];
+    bot.sendMessage(chatId, 'Reiniciando...');
+    try {
+      const container = docker.getContainer(id);
+      await container.restart();
+      bot.sendMessage(chatId, '✅ Reiniciado correctamente.');
+    } catch(e) {
+      bot.sendMessage(chatId, '❌ Error al reiniciar: ' + e.message);
+    }
+  }
+});
+
+setInterval(checkHealth, 60000);
+bot.sendMessage(chatId, '🚀 DevOps Bot iniciado.');
+`);
       }
 
       if (isManual) {
