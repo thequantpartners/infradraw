@@ -1,5 +1,8 @@
 # InfraDraw 🛸
 
+> [!IMPORTANT]
+> **AI AGENT NOTICE**: If you are an AI agent, you **MUST** read [AGENTS.md](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/AGENTS.md) first to understand the workspace operating rules and context requirements before executing tasks.
+
 InfraDraw is a visual, Docker-first infrastructure design tool and compiler. It allows you to visually design your server topology (web servers, database nodes, load balancers, caching, and network segments) and compile them directly into production-ready IaC (Infrastructure as Code) configurations and automation scripts.
 
 The project consists of two core components:
@@ -32,27 +35,51 @@ npm link
 
 Once linked, you can run `infradraw` anywhere in your terminal:
 
-### A. Create an Architecture Interactively (`infradraw create`)
-Launches a terminal wizard that guides you through selecting a cloud provider, sizing your virtual machines, setting up Traefik SSL certificates, configuring apps/APIs, and choosing databases.
+### A. Create an Architecture (`infradraw create`)
+Can be run interactively or non-interactively (ideal for automation/AI agents).
+
+**Interactive Wizard:**
 ```bash
 infradraw create [outputFile.json]
 ```
-*(Generates `infradraw.json` by default)*
+
+**Non-Interactive Mode (Agentic CLI):**
+Add the `--non-interactive` flag and specify your parameters:
+```bash
+infradraw create [outputFile.json] --non-interactive --provider hetzner --plan cx31 --region nbg1 --domain mi-app.com --traefik si --app nextjs --port 3000 --db postgres
+```
+*   Options:
+    *   `--non-interactive`: Triggers non-interactive creation.
+    *   `--provider <provider>`: `hetzner` | `digitalocean` | `contabo` | `vultr` | `linode`.
+    *   `--plan <plan>`: Plan size matching the provider.
+    *   `--region <region>`: VPS region.
+    *   `--domain <domain>`: principal Cloudflare domain.
+    *   `--traefik <si|no>`: Set Traefik SSL certificates.
+    *   `--cert-email <email>`: Cert email.
+    *   `--app <nextjs|vite|nodejs|python|go|ninguno>`: Application framework.
+    *   `--port <port>`: Application running port.
+    *   `--db <postgres|redis|ambas|ninguna>`: DB systems.
+    *   `--json`: Output results in structured JSON.
 
 ### B. Validate Topology (`infradraw validate`)
-Checks if your topology JSON is valid, reports critical architectural errors (e.g. missing VPS, network separation errors) and security warnings.
+Checks if your topology JSON is valid, reports critical architectural errors and warnings.
 ```bash
-infradraw validate <file.json>
+infradraw validate <file.json> [--json]
 ```
+*   `--json`: Returns output in a machine-readable JSON object (e.g. `{ "valid": false, "errors": [...], "warnings": [...] }`).
 
 ### C. Compile to Production IaC (`infradraw compile`)
 Compiles your topology design into a complete deployment package in the destination folder.
 ```bash
-infradraw compile <file.json> [outDir]
+infradraw compile <file.json> [outDir] [--json]
 ```
-*(Compiles to `./dist` by default)*
+*   `--json`: Outputs results in JSON (e.g. `{ "status": "success", "outDir": "dist/", "generatedFiles": [...] }`).
 
----
+### D. Get Supported Meta-Schema (`infradraw schema`)
+Outputs all supported providers, regions, plans, frameworks, and datastores in JSON format so AI agents can query constraints before creating configurations.
+```bash
+infradraw schema
+```
 
 ## 📂 The Generated Deployment Package (`dist/`)
 

@@ -28,6 +28,85 @@ import {
 
 const program = new Command();
 
+function validateTopology(data) {
+  const errors = [];
+  const warnings = [];
+
+  if (!data || typeof data !== 'object') {
+    errors.push('El contenido no es un objeto JSON válido.');
+    return { errors, warnings };
+  }
+
+  const nodes = data.nodes || [];
+  const areas = data.areas || [];
+
+  if (!Array.isArray(nodes)) {
+    errors.push("El campo 'nodes' debe ser un array.");
+    return { errors, warnings };
+  }
+
+  if (nodes.length === 0) {
+    errors.push("La topología debe tener al menos un nodo (ej. 'vps').");
+    return { errors, warnings };
+  }
+
+  const vpsNodes = nodes.filter(n => n.type === 'vps');
+  if (vpsNodes.length === 0) {
+    errors.push("Falta el servidor VPS principal (se requiere al menos un nodo de tipo 'vps').");
+  }
+
+  // Check unique IDs
+  const ids = new Set();
+  nodes.forEach((n, idx) => {
+    if (!n.id) {
+      errors.push(`El nodo en el índice ${idx} no tiene el campo 'id'.`);
+    } else if (ids.has(n.id)) {
+      errors.push(`ID de nodo duplicado encontrado: '${n.id}'.`);
+    } else {
+      ids.add(n.id);
+    }
+  });
+
+  // Check types and configs
+  nodes.forEach(n => {
+    if (!n.type) {
+      errors.push(`El nodo '${n.id || 'sin id'}' no tiene el campo 'type'.`);
+      return;
+    }
+
+    const config = n.config || {};
+
+    if (n.type === 'vps') {
+      const allowedProviders = ['hetzner', 'digitalocean', 'contabo', 'vultr', 'linode'];
+      if (!config.provider) {
+        errors.push(`El nodo VPS '${n.id}' no especifica un proveedor ('config.provider').`);
+      } else if (!allowedProviders.includes(config.provider)) {
+        errors.push(`Proveedor no válido en VPS '${n.id}': '${config.provider}'. Soportados: ${allowedProviders.join(', ')}`);
+      }
+    }
+
+    if (n.type === 'traefik') {
+      if (!config.cert_email) {
+        errors.push(`El nodo Traefik '${n.id}' requiere un email para SSL ('config.cert_email').`);
+      }
+    }
+
+    if (n.type === 'cloudflare') {
+      if (!config.domain) {
+        errors.push(`El nodo Cloudflare '${n.id}' requiere un dominio ('config.domain').`);
+      }
+    }
+
+    if (n.type === 'frontend' || n.type === 'backend') {
+      if (!config.port) {
+        warnings.push(`El nodo de aplicación '${n.id}' (${n.type}) no especifica un puerto. Se usará el puerto por defecto.`);
+      }
+    }
+  });
+
+  return { errors, warnings };
+}
+
 program
   .name('infradraw')
   .description('CLI para compilar arquitecturas visuales de InfraDraw')
@@ -38,22 +117,33 @@ program
   .description('Compila un archivo infradraw.json a ficheros IaC y configuraciones')
   .argument('<file>', 'Ruta al archivo infradraw.json')
   .argument('[outDir]', 'Directorio de salida', './dist')
-  .action(async (file, outDir) => {
+  .option('--json', 'Salida en formato JSON legible por máquinas')
+  .action(async (file, outDir, options) => {
+    const isJson = !!options.json;
+    const generatedFiles = [];
     try {
       const fullPath = path.resolve(process.cwd(), file);
       if (!fs.existsSync(fullPath)) {
-        console.error(chalk.red(`Error: No se encontró el archivo ${fullPath}`));
+        if (isJson) {
+          console.log(JSON.stringify({ status: 'error', error: `No se encontró el archivo ${file}` }));
+        } else {
+          console.error(chalk.red(`Error: No se encontró el archivo ${fullPath}`));
+        }
         process.exit(1);
       }
 
-      console.log(chalk.blue(`Iniciando compilación de ${file}...`));
+      if (!isJson) console.log(chalk.blue(`Iniciando compilación de ${file}...`));
       const data = await fs.readJson(fullPath);
       
       const nodes = data.nodes || [];
       const areas = data.areas || [];
       
       if (nodes.length === 0) {
-        console.error(chalk.red('Error: El archivo no contiene nodos (servicios).'));
+        if (isJson) {
+          console.log(JSON.stringify({ status: 'error', error: 'El archivo no contiene nodos (servicios).' }));
+        } else {
+          console.error(chalk.red('Error: El archivo no contiene nodos (servicios).'));
+        }
         process.exit(1);
       }
 
@@ -80,7 +170,8 @@ program
         const target = path.join(out, relPath);
         await fs.ensureDir(path.dirname(target));
         await fs.writeFile(target, content, 'utf8');
-        console.log(chalk.green(`  Generado: ${relPath}`));
+        generatedFiles.push(relPath);
+        if (!isJson) console.log(chalk.green(`  Generado: ${relPath}`));
       };
 
       await write('docker-compose.yml', generateCompose(nodes, areas, scenario, vpsConfig));
@@ -123,9 +214,17 @@ program
       await write('README.md', generateReadme(nodes, scenario, vpsConfig, cloudflareConfig));
       await write('Makefile', generateMakefile(scenario, vpsConfig));
 
-      console.log(chalk.blue.bold(`\n✨ Compilación completada con éxito en ${outDir}`));
+      if (isJson) {
+        console.log(JSON.stringify({ status: 'success', outDir, generatedFiles }));
+      } else {
+        console.log(chalk.blue.bold(`\n✨ Compilación completada con éxito en ${outDir}`));
+      }
     } catch (err) {
-      console.error(chalk.red(`Error fatal:`), err);
+      if (isJson) {
+        console.log(JSON.stringify({ status: 'error', error: err.message || err }));
+      } else {
+        console.error(chalk.red(`Error fatal:`), err);
+      }
       process.exit(1);
     }
   });
@@ -134,34 +233,205 @@ program
   .command('validate')
   .description('Verifica si la arquitectura en el archivo es válida')
   .argument('<file>', 'Ruta al archivo infradraw.json')
-  .action(async (file) => {
+  .option('--json', 'Salida en formato JSON legible por máquinas')
+  .action(async (file, options) => {
+    const isJson = !!options.json;
     try {
       const fullPath = path.resolve(process.cwd(), file);
-      const data = await fs.readJson(fullPath);
-      const nodes = data.nodes || [];
-      const det = detectScenario(nodes);
-      
-      if (det.errors && det.errors.length > 0) {
-        console.log(chalk.red('❌ Errores en la arquitectura:'));
-        det.errors.forEach(e => console.log(chalk.red(`  - ${e}`)));
-      } else {
-        console.log(chalk.green('✅ La topología es válida.'));
+      if (!fs.existsSync(fullPath)) {
+        if (isJson) {
+          console.log(JSON.stringify({ valid: false, errors: [`No existe el archivo ${file}`], warnings: [] }));
+        } else {
+          console.error(chalk.red(`Error: No existe el archivo ${file}`));
+        }
+        process.exit(1);
       }
+
+      const data = await fs.readJson(fullPath);
+      const { errors, warnings } = validateTopology(data);
       
-      if (det.warnings && det.warnings.length > 0) {
-        console.log(chalk.yellow('\n⚠️  Advertencias:'));
-        det.warnings.forEach(w => console.log(chalk.yellow(`  - ${w}`)));
+      if (isJson) {
+        console.log(JSON.stringify({ valid: errors.length === 0, errors, warnings }));
+      } else {
+        if (errors.length > 0) {
+          console.log(chalk.red('❌ Errores en la arquitectura:'));
+          errors.forEach(e => console.log(chalk.red(`  - ${e}`)));
+        } else {
+          console.log(chalk.green('✅ La topología es válida.'));
+        }
+        
+        if (warnings.length > 0) {
+          console.log(chalk.yellow('\n⚠️  Advertencias:'));
+          warnings.forEach(w => console.log(chalk.yellow(`  - ${w}`)));
+        }
       }
     } catch (err) {
-      console.error(chalk.red(`Error al validar:`), err);
+      if (isJson) {
+        console.log(JSON.stringify({ valid: false, errors: [err.message || err], warnings: [] }));
+      } else {
+        console.error(chalk.red(`Error al validar:`), err);
+      }
+      process.exit(1);
     }
   });
 
 program
   .command('create')
-  .description('Inicia un asistente interactivo para crear una topología de arquitectura')
+  .description('Inicia un asistente interactivo o crea una topología de arquitectura no interactiva')
   .argument('[outputFile]', 'Nombre del archivo de destino', 'infradraw.json')
-  .action(async (outputFile) => {
+  .option('--non-interactive', 'Desactiva el asistente interactivo')
+  .option('--provider <provider>', 'Proveedor de nube (VPS): hetzner, digitalocean, contabo, vultr, linode')
+  .option('--plan <plan>', 'Plan de servidor (ej: cx31, s-2vcpu-4gb)')
+  .option('--region <region>', 'Región del servidor')
+  .option('--domain <domain>', 'Dominio principal (Cloudflare)')
+  .option('--traefik <traefik>', 'Activar Traefik con SSL (si/no)')
+  .option('--cert-email <email>', 'Email para certificados SSL')
+  .option('--app <app>', 'Framework/Tipo de aplicación principal: nextjs, vite, nodejs, python, go, ninguno')
+  .option('--port <port>', 'Puerto de la aplicación')
+  .option('--db <db>', 'Base de datos a incluir (postgres/redis/ambas/ninguna)')
+  .option('--json', 'Salida en formato JSON')
+  .action(async (outputFile, options) => {
+    const isJson = !!options.json;
+    if (options.nonInteractive) {
+      try {
+        const provider = options.provider || 'hetzner';
+        let defaultPlan = 'cx31';
+        if (provider === 'digitalocean') defaultPlan = 's-2vcpu-4gb';
+        else if (provider === 'contabo') defaultPlan = 'vps-s';
+        else if (provider === 'vultr') defaultPlan = 'vc2-2c-4gb';
+        else if (provider === 'linode') defaultPlan = 'linode-4gb';
+
+        const plan = options.plan || defaultPlan;
+
+        let defaultRegion = 'nbg1';
+        if (provider === 'digitalocean') defaultRegion = 'nyc1';
+        else if (provider === 'contabo') defaultRegion = 'fra1';
+        else if (provider === 'vultr') defaultRegion = 'ewr';
+        else if (provider === 'linode') defaultRegion = 'us-east';
+
+        const region = options.region || defaultRegion;
+        const domain = options.domain || '';
+        const useTraefik = options.traefik || (domain ? 'si' : 'no');
+        const certEmail = options.certEmail || (useTraefik === 'si' ? (domain ? `admin@${domain}` : 'admin@tudominio.com') : '');
+        const appFramework = options.app || 'nextjs';
+
+        let defaultPort = 3000;
+        if (appFramework === 'vite') defaultPort = 5173;
+        else if (appFramework === 'nodejs' || appFramework === 'go') defaultPort = 8080;
+        else if (appFramework === 'python') defaultPort = 8000;
+        
+        const appPort = options.port ? parseInt(options.port) : defaultPort;
+        const dbType = options.db || 'postgres';
+
+        const nodes = [];
+        const areas = [
+          { id: 'a1', type: 'net-public', x: -50, y: -50, w: 300, h: 300 },
+          { id: 'a2', type: 'net-db', x: 350, y: -50, w: 300, h: 300 }
+        ];
+
+        // 1. Nodo VPS
+        nodes.push({
+          id: 'n1',
+          type: 'vps',
+          x: 0,
+          y: 0,
+          config: {
+            provider,
+            plan,
+            region,
+            os: 'ubuntu-24.04',
+            role: dbType !== 'ninguna' ? 'app+db' : 'app'
+          }
+        });
+
+        // 2. Cloudflare
+        if (domain) {
+          nodes.push({
+            id: 'n_cf',
+            type: 'cloudflare',
+            x: -150,
+            y: 0,
+            config: { domain }
+          });
+        }
+
+        // 3. Traefik
+        if (useTraefik === 'si') {
+          nodes.push({
+            id: 'n_tr',
+            type: 'traefik',
+            parentId: 'a1',
+            x: 10,
+            y: 10,
+            config: { version: 'v3.0', cert_email: certEmail }
+          });
+        }
+
+        // 4. App
+        if (appFramework !== 'ninguno') {
+          const isFrontend = ['nextjs', 'vite'].includes(appFramework);
+          nodes.push({
+            id: 'n_app',
+            type: isFrontend ? 'frontend' : 'backend',
+            parentId: 'a1',
+            x: 10,
+            y: 120,
+            config: isFrontend ? { framework: appFramework, port: appPort } : { language: appFramework, port: appPort }
+          });
+        }
+
+        // 5. Postgres
+        if (dbType === 'postgres' || dbType === 'ambas') {
+          nodes.push({
+            id: 'n_pg',
+            type: 'postgres',
+            parentId: 'a2',
+            x: 10,
+            y: 10,
+            config: { version: '16', pgbouncer_enabled: false }
+          });
+        }
+
+        // 6. Redis
+        if (dbType === 'redis' || dbType === 'ambas') {
+          nodes.push({
+            id: 'n_rd',
+            type: 'redis',
+            parentId: 'a2',
+            x: 10,
+            y: 120,
+            config: { maxmemory: '1gb' }
+          });
+        }
+
+        const topology = {
+          version: 1,
+          nodes,
+          areas,
+          conns: []
+        };
+
+        const outPath = path.resolve(process.cwd(), outputFile);
+        await fs.ensureDir(path.dirname(outPath));
+        await fs.writeJson(outPath, topology, { spaces: 2 });
+
+        if (isJson) {
+          console.log(JSON.stringify({ status: 'success', outputFile: outPath, topology }));
+        } else {
+          console.log(chalk.bold.green(`\n🎉 ¡Archivo de arquitectura creado con éxito (no interactivo)!`));
+          console.log(`Guardado en: ${chalk.cyan(outPath)}`);
+        }
+      } catch (err) {
+        if (isJson) {
+          console.log(JSON.stringify({ status: 'error', error: err.message || err }));
+        } else {
+          console.error(chalk.red('\nError al crear la arquitectura:'), err);
+        }
+        process.exit(1);
+      }
+      return;
+    }
+
     const rl = readline.createInterface({ input, output });
 
     try {
@@ -389,5 +659,40 @@ async function askQuestion(rl, query, options, defaultVal) {
     console.log(chalk.red(`Opción inválida. Por favor selecciona una de: ${options.join(', ')}`));
   }
 }
+
+program
+  .command('schema')
+  .description('Muestra el esquema de metadatos soportados por InfraDraw en formato JSON')
+  .action(() => {
+    const schemaInfo = {
+      version: '1.0.0',
+      supportedNodeTypes: ['vps', 'traefik', 'frontend', 'backend', 'postgres', 'redis', 'cloudflare'],
+      providers: {
+        hetzner: {
+          plans: ['cx21', 'cx31', 'cx41', 'cx51', 'ccx13', 'ccx23'],
+          defaultRegion: 'nbg1'
+        },
+        digitalocean: {
+          plans: ['s-1vcpu-2gb', 's-2vcpu-4gb', 's-4vcpu-8gb', 's-8vcpu-16gb'],
+          defaultRegion: 'nyc1'
+        },
+        contabo: {
+          plans: ['vps-s', 'vps-m', 'vps-l'],
+          defaultRegion: 'fra1'
+        },
+        vultr: {
+          plans: ['vc2-1c-2gb', 'vc2-2c-4gb', 'vc2-4c-8gb'],
+          defaultRegion: 'ewr'
+        },
+        linode: {
+          plans: ['nanode-1gb', 'linode-4gb', 'linode-8gb', 'linode-16gb'],
+          defaultRegion: 'us-east'
+        }
+      },
+      appFrameworks: ['nextjs', 'vite', 'nodejs', 'python', 'go', 'ninguno'],
+      databaseTypes: ['postgres', 'redis', 'ambas', 'ninguna']
+    };
+    console.log(JSON.stringify(schemaInfo, null, 2));
+  });
 
 program.parse(process.argv);

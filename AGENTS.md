@@ -21,15 +21,16 @@ Antes de comenzar cualquier tarea:
 *   **Auditoría y Diagnóstico:** En caso de dudas sobre el estado de la memoria, usar `pca doctor` o `pca health` para diagnosticar la salud de los archivos del contexto.
 
 ## Reporte Obligatorio de Fallos
-Si durante la ejecución de una tarea, un comando falla, las pruebas no pasan, o el motor de validación (`validateArchitecture`) detecta inconsistencias en los diagramas:
+Si durante la ejecución de una tarea, un comando falla, las pruebas no pasan, o la validación de la topología (`infradraw validate --json`) detecta inconsistencias o errores en la arquitectura:
 1.  **Detener la ejecución inmediatamente.** No ignorar ni saltar advertencias críticas o errores.
-2.  **Rastrear el origen del problema:** Usar herramientas de diagnóstico locales o `pca doctor` si es un problema del entorno.
+2.  **Rastrear el origen del problema:** Usar las salidas estructuradas en JSON del validador o `pca doctor` si es un problema del entorno.
 3.  **Generar reporte:** Presentar al usuario un resumen detallado con el error exacto, las causas probables y una propuesta de solución clara antes de continuar.
 
 ## Reglas de Trabajo
 *   Mantener el alcance (scope) acotado y proteger los cambios previos del usuario.
 *   No sobrescribir archivos sin antes validar su contenido actual.
 *   Preferir cambios de código quirúrgicos y exactos sobre recomendaciones abstractas.
+*   Utilizar `infradraw schema` para consultar los planes, proveedores y tecnologías válidas antes de realizar o sugerir cambios de topología.
 *   Validar la corrección del código antes de dar la tarea por finalizada.
 *   Para tareas de interfaz de usuario, verificar siempre la memoria visual en `pca/visual/`.
 

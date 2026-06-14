@@ -35,3 +35,9 @@
 *   **Estado:** Aprobado
 *   **Contexto:** Para asegurar que un desarrollador o IA pueda editar a mano los archivos `infradraw.json` sin conocer las coordenadas X/Y de los nodos.
 *   **Decisión:** En lugar de requerir posiciones absolutas en el JSON importado, el parser en `canvas.html` se ha dotado de un algoritmo de Auto-Layout en `sanitizeCanvas` que asume coordenadas por defecto y acomoda los nodos en forma de grid dentro de sus contenedores si detecta que faltan.
+
+## 7. Evolución a Agentic CLI con Salidas JSON y Autodescubrimiento (Schema)
+*   **Fecha:** 2026-06-14
+*   **Estado:** Aprobado
+*   **Contexto:** Facilitar que agentes autónomos de Inteligencia Artificial (IAs) integren y automaticen el ciclo de validación, compilación y generación de topologías de InfraDraw sin lidiar con formatos planos inconsistentes o wizards interactivos.
+*   **Decisión:** Dotar a la CLI con flags `--json` para validar y compilar, implementar el comando interactivo/no-interactivo `create --non-interactive` y añadir el comando `schema` para autodescubrimiento de capacidades soportadas directamente como datos de salida estructurados.

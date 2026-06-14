@@ -12,6 +12,7 @@
 
 ## Done
 
+- [x] Evolucionar el CLI de InfraDraw a una Agentic CLI agregando soporte para salidas JSON, comandos de autodescubrimiento (schema) y creación no interactiva.
 - [x] Implementar soporte nativo para importar topologías de red desde archivos JSON con algoritmo de Auto-Layout bidireccional de manera visual.
 - [x] Canvas interactivo funcional con soporte de arrastre de nodos, zoom y redimensionamiento de áreas.
 - [x] Motor de validación de arquitectura en tiempo real (`validateArchitecture`) con detección de riesgos de seguridad y cuellos de botella de RAM.

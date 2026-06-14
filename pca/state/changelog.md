@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased] - 2026-06-14
+
+### Added
+- Evolución del CLI a **Agentic CLI** en `cli/bin/infradraw.js` mediante la adición de flags `--json` para los comandos `compile` y `validate`.
+- Creación de topologías de arquitectura de manera no interactiva usando `infradraw create --non-interactive` y flags de configuración.
+- Nuevo comando `infradraw schema` para imprimir las plataformas, planes, regiones, frameworks y bases de datos soportados en formato JSON.
+- Banner de redirección en `README.md` y guías actualizadas en `AGENTS.md` para instruir a agentes de IA sobre el uso de la CLI y reglas del entorno.
+
 ## [Unreleased] - 2026-06-13
 
 ### Added
