@@ -31,6 +31,7 @@ Si durante la ejecución de una tarea, un comando falla, las pruebas no pasan, o
 *   No sobrescribir archivos sin antes validar su contenido actual.
 *   Preferir cambios de código quirúrgicos y exactos sobre recomendaciones abstractas.
 *   Utilizar `infradraw schema` para consultar los planes, proveedores y tecnologías válidas antes de realizar o sugerir cambios de topología.
+*   **Cuidado con Inyección de Código (Template Literals):** Al inyectar o modificar código JavaScript que genere strings con template literals (\`), NO escapar las comillas invertidas con barra invertida (`\`\`) al usar la herramienta de reemplazo, ya que la barra invertida se escribirá literalmente en el código fuente rompiendo la sintaxis (`SyntaxError: Invalid or unexpected token`).
 *   Validar la corrección del código antes de dar la tarea por finalizada.
 *   Para tareas de interfaz de usuario, verificar siempre la memoria visual en `pca/visual/`.
 
