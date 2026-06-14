@@ -920,9 +920,9 @@ function generateTerraformOutputs(vpsNodes, vpsConfig) {
   var out = `# terraform/outputs.tf — generado por InfraDraw\n\n`;
   vpsNodes.forEach(function(vps, i){
     var role = (vps.config && vps.config.role) || 'app';
-    var ip_value = \`hcloud_server.\${role}_\${i+1}.ipv4_address\`;
-    if (provider === 'digitalocean') ip_value = \`digitalocean_droplet.\${role}_\${i+1}.ipv4_address\`;
-    if (provider === 'gcloud') ip_value = \`google_compute_instance.\${role}_\${i+1}.network_interface.0.access_config.0.nat_ip\`;
+    var ip_value = `hcloud_server.${role}_${i+1}.ipv4_address`;
+    if (provider === 'digitalocean') ip_value = `digitalocean_droplet.${role}_${i+1}.ipv4_address`;
+    if (provider === 'gcloud') ip_value = `google_compute_instance.${role}_${i+1}.network_interface.0.access_config.0.nat_ip`;
     out += `output "${role}_${i+1}_ip" {
   description = "IP pública del servidor ${role} #${i+1}"
   value       = ${ip_value}
