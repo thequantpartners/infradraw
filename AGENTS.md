@@ -34,6 +34,7 @@ Si durante la ejecución de una tarea, un comando falla, las pruebas no pasan, o
 *   **Cuidado con Inyección de Código (Template Literals):** Al inyectar o modificar código JavaScript que genere strings con template literals (\`), NO escapar las comillas invertidas con barra invertida (`\`\`) al usar la herramienta de reemplazo, ya que la barra invertida se escribirá literalmente en el código fuente rompiendo la sintaxis (`SyntaxError: Invalid or unexpected token`).
 *   Validar la corrección del código antes de dar la tarea por finalizada.
 *   Para tareas de interfaz de usuario, verificar siempre la memoria visual en `pca/visual/`.
+*   **Actualización de README.md:** Cada vez que se actualice el proyecto con cambios importantes (funcionalidades principales, nuevas plataformas, cambios en la topología soportada), el agente debe actualizar también el archivo [README.md](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/README.md) reflejando dichos cambios. Si los cambios son menores, no es necesario.
 
 ## Regla de Cierre (Closure Rule)
 Al finalizar, preguntar al usuario de forma exacta:
