@@ -152,7 +152,7 @@ program
       const vpsConfig = (vpsNodes[0] && vpsNodes[0].config) || {};
       const provider = vpsConfig.provider || 'hetzner';
       const isManual = provider === 'contabo';
-      const needsTerraform = ['hetzner', 'digitalocean', 'vultr', 'linode'].includes(provider);
+      const needsTerraform = ['hetzner', 'digitalocean', 'vultr', 'linode', 'gcloud'].includes(provider);
       const ramGB = getPlanRAM(provider, vpsConfig.plan || 'cx31');
 
       const cfNode = nodes.find(n => n.type === 'cloudflare');
@@ -196,12 +196,23 @@ program
         await write('terraform/main.tf', generateTerraform(nodes, vpsConfig, cloudflareConfig));
         await write('terraform/variables.tf', generateTerraformVars(vpsConfig, cloudflareConfig));
         await write('terraform/outputs.tf', generateTerraformOutputs(vpsNodes, vpsConfig));
-        const tfvarsExample = '# Copia como terraform.tfvars y completa los valores\n' +
-          '# NUNCA subas terraform.tfvars a git\n\n' +
-          'hcloud_token         = ""\n' +
-          'ssh_public_key       = ""\n' +
-          'cloudflare_api_token = ""\n' +
-          'cloudflare_zone_id   = ""\n';
+        let tfvarsExample = '';
+        if (provider === 'gcloud') {
+          tfvarsExample = '# Copia como terraform.tfvars y completa los valores\n' +
+            '# NUNCA subas terraform.tfvars a git\n\n' +
+            'gcp_project_id       = ""\n' +
+            'gcp_credentials_file = "../gcp-credentials.json"\n' +
+            'ssh_public_key       = ""\n' +
+            'cloudflare_api_token = ""\n' +
+            'cloudflare_zone_id   = ""\n';
+        } else {
+          tfvarsExample = '# Copia como terraform.tfvars y completa los valores\n' +
+            '# NUNCA subas terraform.tfvars a git\n\n' +
+            'hcloud_token         = ""\n' +
+            'ssh_public_key       = ""\n' +
+            'cloudflare_api_token = ""\n' +
+            'cloudflare_zone_id   = ""\n';
+        }
         await write('terraform/terraform.tfvars.example', tfvarsExample);
       }
 

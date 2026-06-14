@@ -775,6 +775,8 @@ resource "cloudflare_record" "root" {
   type    = "A"
   proxied = true
 }
+
+${hasStorage && storageNode ? '\n# ── Google Cloud Storage (GCS) ─────────────────────────────\nresource "google_storage_bucket" "storage" {\n  name          = var.gcs_bucket_name\n  location      = "' + region.toUpperCase() + '"\n  force_destroy = true\n}\n' : ''}
 `;
   }
 
@@ -862,6 +864,12 @@ variable "gcp_credentials_file" {
   description = "Ruta al archivo JSON de credenciales de la cuenta de servicio de GCP"
   type        = string
   default     = "../gcp-credentials.json"
+}
+
+variable "gcs_bucket_name" {
+  description = "Nombre unico global para el bucket de Google Cloud Storage (GCS)"
+  type        = string
+  default     = "infradraw-gcs-bucket"
 }
 
 `;
