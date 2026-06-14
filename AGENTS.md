@@ -37,7 +37,7 @@ Si durante la ejecución de una tarea, un comando falla, las pruebas no pasan, o
 *   **Actualización de README.md:** Cada vez que se actualice el proyecto con cambios importantes (funcionalidades principales, nuevas plataformas, cambios en la topología soportada), el agente debe actualizar también el archivo [README.md](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/README.md) reflejando dichos cambios. Si los cambios son menores, no es necesario.
 
 ## Regla de Cierre (Closure Rule)
-Al finalizar, preguntar al usuario de forma exacta:
+Al finalizar una tarea de desarrollo o modificación de código, preguntar al usuario de forma exacta:
 
 ¿Doy esta tarea por terminada?
 
@@ -51,3 +51,5 @@ Posteriormente, registrar el hito de cierre del contexto ejecutando:
 ```bash
 pca commit "docs: close task and update context logs"
 ```
+
+Si el turno es puramente conversacional o una aclaración de dudas sin cambios de código ejecutados en el espacio de trabajo, **no** se debe realizar esta pregunta ni forzar el cierre del contexto.
