@@ -23,3 +23,5 @@
 - [x] Creación del CLI de InfraDraw desacoplado (`infradraw-cli`) con comandos de validación, compilación a IaC y creación interactiva de topologías desde la terminal.
 - [x] Integración de Google Cloud (GCP) como proveedor principal con despliegue completo de Terraform.
 - [x] Creación de un asistente DevOps en Telegram embebido en la topología para monitorización de salud y reinicio de contenedores.
+- [x] Selector global de nube (Private Cloud vs GCP) en el canvas con equivalencias de servicios de GCP, locking de proveedores a 'gcloud' y Terraform nativo para Google Cloud Storage (GCS).
+

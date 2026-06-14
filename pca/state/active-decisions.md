@@ -47,3 +47,10 @@
 *   **Estado:** Aprobado
 *   **Contexto:** Se requiere monitorear la infraestructura exportada e interactuar con ella desde Telegram de manera segura y sin SSH directo.
 *   **Decisión:** Inyectar dinámicamente un bot nativo en Node.js en la carpeta `bot/` al compilar la arquitectura. El bot se enlaza a `/var/run/docker.sock` en modo solo lectura de eventos, y notifica proactivamente alertas con botones de reinicio interactivo inline.
+
+## 9. Selector Global de Nube y Nodos Equivalentes de GCP
+*   **Fecha:** 2026-06-14
+*   **Estado:** Aprobado
+*   **Contexto:** Se necesita facilitar al usuario el diseño de topologías enfocadas a Google Cloud Platform (GCP) mostrando nombres, iconos y herramientas nativas de este proveedor sin distorsionar el motor original de Docker-first ni perder soporte de Cloudflare.
+*   **Decisión:** Implementar un selector dinámico en el canvas React que modifica la paleta de componentes para mostrar las equivalencias nativas de GCP (Compute Engine, Cloud SQL, Cloud Storage). Al usar este modo, los VPS/Compute Engine quedan automáticamente bloqueados con el proveedor `gcloud` en su panel de configuración. Adicionalmente, el compilador genera Terraform nativo para buckets de Google Cloud Storage (`google_storage_bucket`) si se añade almacenamiento.
+
