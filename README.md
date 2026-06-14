@@ -50,7 +50,7 @@ infradraw create [outputFile.json] --non-interactive --provider hetzner --plan c
 ```
 *   Options:
     *   `--non-interactive`: Triggers non-interactive creation.
-    *   `--provider <provider>`: `hetzner` | `digitalocean` | `contabo` | `vultr` | `linode`.
+    *   `--provider <provider>`: `hetzner` | `digitalocean` | `contabo` | `vultr` | `linode` | `gcloud`.
     *   `--plan <plan>`: Plan size matching the provider.
     *   `--region <region>`: VPS region.
     *   `--domain <domain>`: principal Cloudflare domain.
@@ -145,7 +145,7 @@ InfraDraw topology files use a simple, structured JSON schema. An AI agent or sc
 
 ### Node Types & Configurations:
 *   `vps`: Virtual Private Server.
-    *   `provider`: `hetzner` | `digitalocean` | `contabo` | `vultr` | `linode`
+    *   `provider`: `hetzner` | `digitalocean` | `contabo` | `vultr` | `linode` | `gcloud`
     *   `plan`: Machine sizes matching the selected provider.
     *   `role`: `app` | `db` | `app+db`
 *   `traefik`: Reverse proxy / SSL manager. Requires `cert_email`.
