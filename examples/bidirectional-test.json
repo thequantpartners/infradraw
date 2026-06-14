@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "vps-app", "type": "vps", "label": "App Server", "config": { "provider": "hetzner", "plan": "cx31" } },
+    { "id": "vps-db", "type": "vps", "label": "DB Server", "config": { "provider": "hetzner", "plan": "cx31" } },
+    { "id": "frontend", "type": "frontend", "label": "Web UI", "parentId": "vps-app" },
+    { "id": "backend", "type": "backend", "label": "API", "parentId": "vps-app" },
+    { "id": "db", "type": "postgres", "label": "Main DB", "parentId": "vps-db" },
+    { "id": "cache", "type": "redis", "label": "Redis Cache", "parentId": "vps-db" },
+    { "id": "cf", "type": "cloudflare", "label": "CDN" }
+  ],
+  "areas": [
+    { "id": "vps-app", "type": "vps", "label": "App Server" },
+    { "id": "vps-db", "type": "vps", "label": "DB Server" }
+  ],
+  "conns": [
+    { "id": "c1", "from": "cf", "to": "frontend" },
+    { "id": "c2", "from": "frontend", "to": "backend" },
+    { "id": "c3", "from": "backend", "to": "db" },
+    { "id": "c4", "from": "backend", "to": "cache" }
+  ]
+}

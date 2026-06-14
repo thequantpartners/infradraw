@@ -127,3 +127,22 @@ InfraDraw topology files use a simple, structured JSON schema. An AI agent or sc
     *   `port`: Running port (e.g. `3000`, `8080`).
 *   `postgres` / `redis`: Datastores. Optimized automatically.
 *   `cloudflare`: Global DNS manager. Requires `domain` in config.
+
+---
+
+## 🔄 Bidirectional Synchronization & Auto-Layout Fallback
+
+Since version 1.1, InfraDraw supports complete bidirectional editing. Developers can:
+1. Export a topology JSON from the visual editor.
+2. Manually edit, add, or delete nodes/areas in the JSON file using any code editor.
+3. Import the updated JSON back into the visual web canvas.
+
+### Auto-Layout Schema Fallback
+If you write or edit a JSON topology file programmatically (or by hand) and omit the visual positioning properties (`x`, `y` for nodes; `x`, `y`, `w`, `h` for areas), the visual editor's **Auto-Layout Fallback** will automatically organize and place them on import:
+*   **Areas:** Dynamically arranged in a horizontal grid layout with standard scaling.
+*   **Nodes inside Areas (via `parentId`):** Automatically positioned inside their parent area bounds using a grid pattern.
+*   **Orphan/Global Nodes:** Organized in a row below the main areas.
+*   **Connections:** Preserved and drawn dynamically based on the resolved coordinates.
+
+This prevents layout breakages (such as `NaN` positioning) and enables seamless Git-driven, CLI-driven, and manual text modifications.
+

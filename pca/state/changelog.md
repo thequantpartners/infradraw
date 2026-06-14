@@ -13,4 +13,5 @@
 - Extracción de la lógica de compilación y generación de IaC (Docker Compose, Terraform, Traefik, scripts de backup) a `cli/src/compiler.js`.
 - Creación del ejecutable `cli/bin/infradraw.js` con soporte para validación e inicio interactivo de proyectos mediante un asistente en terminal.
 - Reescritura y optimización de [README.md](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/README.md) y [CLAUDE.md](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/CLAUDE.md) con enfoque 100% centrado en la arquitectura de InfraDraw para humanos e Inteligencias Artificiales.
+- Implementación de Sincronización Bidireccional (Opción A) inyectando un algoritmo de Auto-Layout Fallback en `canvas.html` para permitir importar archivos JSON editados manualmente sin coordenadas.
 

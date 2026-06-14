@@ -11,3 +11,5 @@ terraform.tfvars
 .terraform/
 *.tfstate
 *.tfstate.backup
+cli/out-test/
+

@@ -29,3 +29,9 @@
 *   **Estado:** Aprobado
 *   **Contexto:** Se solicitó evaluar e implementar mejoras en la experiencia de usuario (alineación, nuevos nodos y evaluación de costos).
 *   **Decisión:** Mantener la implementación de estas mejoras puramente en el cliente (`canvas.html`), aprovechando el ciclo de renderizado nativo de la SPA para calcular estimaciones de precio sin agregar complejidad de dependencias externas.
+
+## 6. Algoritmo de Auto-Layout (Fallback) para Sincronización Bidireccional
+*   **Fecha:** 2026-06-13
+*   **Estado:** Aprobado
+*   **Contexto:** Para asegurar que un desarrollador o IA pueda editar a mano los archivos `infradraw.json` sin conocer las coordenadas X/Y de los nodos.
+*   **Decisión:** En lugar de requerir posiciones absolutas en el JSON importado, el parser en `canvas.html` se ha dotado de un algoritmo de Auto-Layout en `sanitizeCanvas` que asume coordenadas por defecto y acomoda los nodos en forma de grid dentro de sus contenedores si detecta que faltan.

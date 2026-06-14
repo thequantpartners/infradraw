@@ -2237,15 +2237,36 @@ function App() {
   function sanitizeCanvas(d){
     var rawN=Array.isArray(d.nodes)?d.nodes:[],rawA=Array.isArray(d.areas)?d.areas:[],rawNt=Array.isArray(d.notes)?d.notes:[],rawC=Array.isArray(d.conns)?d.conns:[];
     var rawAreas=rawA.filter(function(a){return a&&a.id&&AREA_TYPES[a.type];});
-    var rawAById={};rawAreas.forEach(function(a){rawAById[a.id]=a;});
+    var rawAById={};
+    rawAreas.forEach(function(a, i){
+      if(typeof a.x !== 'number') a.x = (i % 3) * 420;
+      if(typeof a.y !== 'number') a.y = Math.floor(i / 3) * 340;
+      if(typeof a.w !== 'number') a.w = AREA_DEF_W;
+      if(typeof a.h !== 'number') a.h = AREA_DEF_H;
+      rawAById[a.id]=a;
+    });
     var areas=rawAreas.map(function(a){
       if(!a.parentId||!rawAById[a.parentId])return a;
       var pa=rawAById[a.parentId];return Object.assign({},a,{x:a.x+pa.x,y:a.y+pa.y,parentId:a.parentId});
     });
     var aById={};areas.forEach(function(a){aById[a.id]=a;});
+    
+    var orphanCount = 0;
+    var childCountByArea = {};
     var nodes=rawN.filter(function(n){return n&&n.id&&SERVICES[n.type];}).map(function(n){
-      if(!n.parentId||!aById[n.parentId])return n;
-      var a=aById[n.parentId];return Object.assign({},n,{x:n.x+a.x,y:n.y+a.y});
+      var isOrphan = !n.parentId || !aById[n.parentId];
+      if(isOrphan) {
+        if(typeof n.x !== 'number' || typeof n.y !== 'number') { n.x = orphanCount * 180; n.y = -100; orphanCount++; }
+        return n;
+      }
+      var a=aById[n.parentId];
+      childCountByArea[a.id] = childCountByArea[a.id] || 0;
+      if(typeof n.x !== 'number' || typeof n.y !== 'number') {
+         n.x = 20 + (childCountByArea[a.id] % 2) * 160;
+         n.y = 60 + Math.floor(childCountByArea[a.id] / 2) * 80;
+         childCountByArea[a.id]++;
+      }
+      return Object.assign({},n,{x:n.x+a.x,y:n.y+a.y});
     });
     var notes=rawNt.filter(function(nt){return nt&&nt.id;}).map(function(nt){return Object.assign({},nt,{colorIdx:clamp(nt.colorIdx||0,0,NOTE_COLORS.length-1),w:nt.w||200,h:nt.h||150});});
     var validIds=new Set(nodes.map(function(n){return n.id;}));
