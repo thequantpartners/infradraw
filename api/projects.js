@@ -50,7 +50,7 @@ module.exports = async function handler(req, res) {
 
       await Promise.all([
         redis(['SET', 'projects_list', JSON.stringify(list)]),
-        redis(['SET', `project:${id}`, JSON.stringify({ ...meta, canvas: EMPTY_CANVAS })]),
+        redis(['SET', `project:${id}`, JSON.stringify({ ...meta, canvas: null })]),
       ]);
 
       res.status(200).json(meta);

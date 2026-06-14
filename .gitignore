@@ -1,1 +1,13 @@
 .vercel
+node_modules/
+cli/node_modules/
+cli/dist/
+pw-downloads/
+pw-screenshots/
+*.log
+dist/
+.env
+terraform.tfvars
+.terraform/
+*.tfstate
+*.tfstate.backup

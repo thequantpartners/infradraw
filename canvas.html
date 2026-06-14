@@ -134,10 +134,13 @@ var SERVICES = {
   frontend:     { label:"Frontend",          icon:"▲",  color:"#5b6470" },
   backend:      { label:"Backend",           icon:"⚙️",  color:"#539E43" },
   ai:           { label:"AI Service",        icon:"🤖", color:"#0c8f82" },
+  cron:         { label:"Cron / Worker",     icon:"⚙️", color:"#8B5CF6" },
 
   // BASE DE DATOS
   postgres:     { label:"PostgreSQL",        icon:"🐘", color:"#336791" },
   redis:        { label:"Redis",             icon:"🔴", color:"#DC382D" },
+  supabase:     { label:"Supabase",          icon:"⚡", color:"#3ECF8E" },
+  pocketbase:   { label:"PocketBase",        icon:"🗄️", color:"#B8E986" },
 
   // SEARCH & QUEUE
   meilisearch:  { label:"Meilisearch",       icon:"🔎", color:"#FF5CAA" },
@@ -169,18 +172,18 @@ var SERVICES = {
 
   // ORQUESTACIÓN (Nivel 2+)
   swarm:        { label:"Docker Swarm",      icon:"🐝", color:"#1D63ED" },
-  k3s:          { label:"K3s",              icon:"☸️",  color:"#FFA500" },
+  k3s:          { label:"K3s",               icon:"☸️",  color:"#FFA500" },
 
   // NETWORKING AVANZADO
   livekit:      { label:"LiveKit",           icon:"🎙️",  color:"#0F62FE" },
-  mediamtx:     { label:"Mediamtx",         icon:"📹", color:"#1a1a2e" }
+  mediamtx:     { label:"Mediamtx",          icon:"📹",  color:"#1a1a2e" }
 };
 var PALETTE_GROUPS = [
   { title:"Entrada",          keys:["internet"] },
   { title:"Edge & Red",       keys:["cloudflare","traefik","loadbalancer","wireguard"] },
   { title:"Compute",          keys:["vps"] },
-  { title:"Aplicación",       keys:["frontend","backend","ai"] },
-  { title:"Base de datos",    keys:["postgres","redis"] },
+  { title:"Aplicación",       keys:["frontend","backend","ai","cron"] },
+  { title:"Base de Datos",    keys:["postgres","redis","supabase","pocketbase"] },
   { title:"Search & Queue",   keys:["meilisearch","bullmq"] },
   { title:"Storage & Email",  keys:["storage","email"] },
   { title:"Observabilidad",   keys:["prometheus","grafana","loki","tempo","alertmanager","uptimerobot"] },
@@ -607,6 +610,18 @@ function getPlanRAM(provider, plan) {
   return (RAM[provider] && RAM[provider][planKey]) || 8;
 }
 
+function getPlanCost(provider, plan) {
+  var COST = {
+    hetzner: { cx21:4.5, cx31:7.5, cx41:14.5, cx51:28.5, ccx13:14.5, ccx23:28.5 },
+    digitalocean: { 's-1vcpu-2gb':12,'s-2vcpu-4gb':24,'s-4vcpu-8gb':48,'s-8vcpu-16gb':96 },
+    contabo: { 'vps-s':5.5,'vps-m':10.5,'vps-l':23.5,'vds-s':47 },
+    vultr: { 'vc2-1c-2gb':12,'vc2-2c-4gb':24,'vc2-4c-8gb':48,'vhf-2c-4gb':28,'vhf-4c-8gb':56 },
+    linode: { 'nanode-1gb':5,'linode-4gb':24,'linode-8gb':48,'linode-16gb':96,'dedicated-4gb':36,'dedicated-8gb':72 }
+  };
+  var planKey = String(plan).split(' ')[0].toLowerCase();
+  return (COST[provider] && COST[provider][planKey]) || 0;
+}
+
 function getS3Endpoint(provider) {
   var endpoints = {
     wasabi:        'https://s3.wasabisys.com',
@@ -640,7 +655,11 @@ min_wal_size = 512MB
 
 # Conexiones
 max_connections = 100
-connection_timeout = 10000
+# idle_in_transaction_session_timeout: aborta sesiones que llevan > 10s
+# bloqueadas en una transacción (equivalente servidor de connection_timeout).
+# connection_timeout NO es un parámetro de postgresql.conf — es de libpq.
+idle_in_transaction_session_timeout = 10000
+lock_timeout = 30000
 
 # Query planner (SSD)
 default_statistics_target = 100
@@ -751,6 +770,12 @@ function generateCompose(nodes, areas, scenario, vpsConfig) {
   var hasInternal = areas.some(function(a){return a.type==='net-internal';});
   var hasDB       = areas.some(function(a){return a.type==='net-db';});
 
+  // BUG-5 FIX: Si no se añadieron áreas de red explícitas, definir las redes estándar
+  // para que los servicios que las referencian (traefik→public, postgres/redis→internal)
+  // sean válidos. Un networks: vacío genera "networks must be a mapping" en docker compose.
+  var effectivePublic   = hasPublic   || (!hasPublic && !hasInternal && !hasDB);
+  var effectiveInternal = hasInternal || (!hasPublic && !hasInternal && !hasDB);
+
   var out = `# docker-compose.yml — generado por InfraDraw
 # Escenario ${scenario} | ${(vpsConfig&&vpsConfig.provider) || 'hetzner'} ${(vpsConfig&&vpsConfig.plan) || 'cx31'}
 # RAM detectada: ${ramGB}GB
@@ -758,9 +783,9 @@ function generateCompose(nodes, areas, scenario, vpsConfig) {
 networks:
 `;
 
-  if (hasPublic)   out += `  public:\n    driver: bridge\n`;
-  if (hasInternal) out += `  internal:\n    driver: bridge\n    internal: true\n`;
-  if (hasDB)       out += `  db:\n    driver: bridge\n    internal: true\n`;
+  if (effectivePublic)  out += `  public:\n    driver: bridge\n`;
+  if (effectiveInternal) out += `  internal:\n    driver: bridge\n    internal: true\n`;
+  if (hasDB)            out += `  db:\n    driver: bridge\n    internal: true\n`;
 
   out += `\nservices:\n`;
 
@@ -813,7 +838,7 @@ networks:
   }
 
   if (hasType('backend')) {
-    var bNets = [hasPublic?'public':null, hasInternal?'internal':null, hasDB?'db':null].filter(Boolean).join(', ');
+    var bNets = [effectivePublic?'public':null, effectiveInternal?'internal':null, hasDB?'db':null].filter(Boolean).join(', ');
     out += `
   backend:
     image: \${REGISTRY}/backend:\${VERSION:-latest}
@@ -881,7 +906,7 @@ networks:
       - ./config/postgresql.conf:/etc/postgresql/postgresql.conf
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     healthcheck:
-      test: ["CMD-SHELL","pg_isready -U \${DB_USER} -d \${DB_NAME}"]
+      test: ["CMD-SHELL","pg_isready -U \${DB_USER} -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1946,10 +1971,16 @@ function App() {
     fetch('/api/project?id='+id).then(function(r){return r.json();}).then(function(data){
       if(data.error){alert('Proyecto no encontrado');window.location.href='/';return;}
       if(data.canvas){
-        var mig=migrateNodes(data.canvas);
-        if(mig.migrated.length||mig.removed.length)setMigrationInfo({migrated:mig.migrated,removed:mig.removed});
-        var s=sanitizeCanvas(mig.data);
-        setNodes(s.nodes);setAreas(s.areas);setNotes(s.notes);setConns(s.conns);
+        var hasContent=(data.canvas.nodes&&data.canvas.nodes.length>0)||
+                       (data.canvas.areas&&data.canvas.areas.length>0)||
+                       (data.canvas.notes&&data.canvas.notes.length>0)||
+                       (data.canvas.conns&&data.canvas.conns.length>0);
+        if(hasContent){
+          var mig=migrateNodes(data.canvas);
+          if(mig.migrated.length||mig.removed.length)setMigrationInfo({migrated:mig.migrated,removed:mig.removed});
+          var s=sanitizeCanvas(mig.data);
+          setNodes(s.nodes);setAreas(s.areas);setNotes(s.notes);setConns(s.conns);
+        }
         if(data.canvas.transform)setTransform(data.canvas.transform);
       }
       setProjectName(data.name||'Sin nombre');
@@ -1981,7 +2012,14 @@ function App() {
     if(!SERVICES[type])return;
     pushHistory();
     var id=uid();
-    setNodes(function(p){return p.concat([{id,type,x:wx-NODE_W/2,y:wy-NODE_H/2,label:SERVICES[type].label}]);});
+    var bestArea=null;
+    areasRef.current.forEach(function(a){
+      if(wx>=a.x&&wx<=a.x+a.w&&wy>=a.y&&wy<=a.y+a.h){
+        if(!bestArea||a.w*a.h<bestArea.w*bestArea.h)bestArea=a;
+      }
+    });
+    var parentId=bestArea?bestArea.id:undefined;
+    setNodes(function(p){return p.concat([{id,type,x:wx-NODE_W/2,y:wy-NODE_H/2,label:SERVICES[type].label,parentId:parentId}]);});
     setSelectedId(id);setSelectedAreaId(null);setSelectedNoteId(null);
   }
   function addAreaAt(type,wx,wy){
@@ -2092,7 +2130,6 @@ function App() {
     if(isManual)zip.file('PROVISION_MANUAL.md',generateManualProvision(vpsConfig));
     zip.file('.env.example',generateEnv(nodes,vpsConfig,cloudflareConfig));
     zip.file('.gitignore','.env\nterraform.tfvars\n.terraform/\n*.tfstate\n*.tfstate.backup\n');
-    zip.file('Makefile',generateMakefile(scenario,vpsConfig));
     zip.file('README.md',generateReadme(nodes,scenario,vpsConfig,cloudflareConfig));
     var slug=(cloudflareConfig.zone||projectNameRef.current||'proyecto').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'proyecto';
     zip.generateAsync({type:'blob'}).then(function(blob){
@@ -2200,15 +2237,12 @@ function App() {
   function sanitizeCanvas(d){
     var rawN=Array.isArray(d.nodes)?d.nodes:[],rawA=Array.isArray(d.areas)?d.areas:[],rawNt=Array.isArray(d.notes)?d.notes:[],rawC=Array.isArray(d.conns)?d.conns:[];
     var rawAreas=rawA.filter(function(a){return a&&a.id&&AREA_TYPES[a.type];});
-    // Build index of raw areas to resolve parentId for nested areas
     var rawAById={};rawAreas.forEach(function(a){rawAById[a.id]=a;});
-    // Resolve area parentId (e.g. subnets inside VPS)
     var areas=rawAreas.map(function(a){
       if(!a.parentId||!rawAById[a.parentId])return a;
       var pa=rawAById[a.parentId];return Object.assign({},a,{x:a.x+pa.x,y:a.y+pa.y,parentId:a.parentId});
     });
     var aById={};areas.forEach(function(a){aById[a.id]=a;});
-    // Resolve node parentId
     var nodes=rawN.filter(function(n){return n&&n.id&&SERVICES[n.type];}).map(function(n){
       if(!n.parentId||!aById[n.parentId])return n;
       var a=aById[n.parentId];return Object.assign({},n,{x:n.x+a.x,y:n.y+a.y});
@@ -2235,11 +2269,11 @@ function App() {
     function onMove(e){
       var it=inter.current;
       if(it.mode==='pan'){var t=transformRef.current;setTransform({x:it.ox+(e.clientX-it.sx),y:it.oy+(e.clientY-it.sy),scale:t.scale});}
-      else if(it.mode==='drag'){var w=screenToWorld(e.clientX,e.clientY),dx=w.x-it.startWX,dy=w.y-it.startWY;if(!it.moved&&Math.hypot(dx,dy)*transformRef.current.scale>3)it.moved=true;it.finalX=it.nodeX+dx;it.finalY=it.nodeY+dy;setNodes(function(p){return p.map(function(n){return n.id===it.id?Object.assign({},n,{x:it.finalX,y:it.finalY}):n;});});}
-      else if(it.mode==='area-drag'){var w2=screenToWorld(e.clientX,e.clientY),dx2=w2.x-it.startWX,dy2=w2.y-it.startWY;if(!it.moved&&Math.hypot(dx2,dy2)*transformRef.current.scale>3)it.moved=true;setAreas(function(p){return p.map(function(a){return a.id===it.id?Object.assign({},a,{x:it.areaX+dx2,y:it.areaY+dy2}):a;});});if(it.childOrig&&Object.keys(it.childOrig).length)setNodes(function(p){return p.map(function(n){var orig=it.childOrig[n.id];return orig?Object.assign({},n,{x:orig.x+dx2,y:orig.y+dy2}):n;});});}
-      else if(it.mode==='area-resize'){var w3=screenToWorld(e.clientX,e.clientY),r=applyResize(it,w3.x,w3.y,120,80);setAreas(function(p){return p.map(function(a){return a.id===it.id?Object.assign({},a,{x:r.nx,y:r.ny,w:r.nw,h:r.nh}):a;});});}
-      else if(it.mode==='note-drag'){var w4=screenToWorld(e.clientX,e.clientY),dx4=w4.x-it.startWX,dy4=w4.y-it.startWY;if(!it.moved&&Math.hypot(dx4,dy4)*transformRef.current.scale>3)it.moved=true;setNotes(function(p){return p.map(function(n){return n.id===it.id?Object.assign({},n,{x:it.noteX+dx4,y:it.noteY+dy4}):n;});});}
-      else if(it.mode==='note-resize'){var w5=screenToWorld(e.clientX,e.clientY),r2=applyResize(it,w5.x,w5.y,120,90);setNotes(function(p){return p.map(function(n){return n.id===it.id?Object.assign({},n,{x:r2.nx,y:r2.ny,w:r2.nw,h:r2.nh}):n;});});}
+      else if(it.mode==='drag'){var w=screenToWorld(e.clientX,e.clientY),dx=w.x-it.startWX,dy=w.y-it.startWY;if(!it.moved&&Math.hypot(dx,dy)*transformRef.current.scale>3)it.moved=true;it.finalX=Math.round((it.nodeX+dx)/20)*20;it.finalY=Math.round((it.nodeY+dy)/20)*20;setNodes(function(p){return p.map(function(n){return n.id===it.id?Object.assign({},n,{x:it.finalX,y:it.finalY}):n;});});}
+      else if(it.mode==='area-drag'){var w2=screenToWorld(e.clientX,e.clientY),dx2=w2.x-it.startWX,dy2=w2.y-it.startWY;if(!it.moved&&Math.hypot(dx2,dy2)*transformRef.current.scale>3)it.moved=true;var nax=Math.round((it.areaX+dx2)/20)*20,nay=Math.round((it.areaY+dy2)/20)*20;var adx=nax-it.areaX,ady=nay-it.areaY;setAreas(function(p){return p.map(function(a){return a.id===it.id?Object.assign({},a,{x:nax,y:nay}):a;});});if(it.childOrig&&Object.keys(it.childOrig).length)setNodes(function(p){return p.map(function(n){var orig=it.childOrig[n.id];return orig?Object.assign({},n,{x:Math.round((orig.x+adx)/20)*20,y:Math.round((orig.y+ady)/20)*20}):n;});});}
+      else if(it.mode==='area-resize'){var w3=screenToWorld(e.clientX,e.clientY),r=applyResize(it,w3.x,w3.y,120,80);setAreas(function(p){return p.map(function(a){return a.id===it.id?Object.assign({},a,{x:Math.round(r.nx/20)*20,y:Math.round(r.ny/20)*20,w:Math.round(r.nw/20)*20,h:Math.round(r.nh/20)*20}):a;});});}
+      else if(it.mode==='note-drag'){var w4=screenToWorld(e.clientX,e.clientY),dx4=w4.x-it.startWX,dy4=w4.y-it.startWY;if(!it.moved&&Math.hypot(dx4,dy4)*transformRef.current.scale>3)it.moved=true;setNotes(function(p){return p.map(function(n){return n.id===it.id?Object.assign({},n,{x:Math.round((it.noteX+dx4)/20)*20,y:Math.round((it.noteY+dy4)/20)*20}):n;});});}
+      else if(it.mode==='note-resize'){var w5=screenToWorld(e.clientX,e.clientY),r2=applyResize(it,w5.x,w5.y,120,90);setNotes(function(p){return p.map(function(n){return n.id===it.id?Object.assign({},n,{x:Math.round(r2.nx/20)*20,y:Math.round(r2.ny/20)*20,w:Math.round(r2.nw/20)*20,h:Math.round(r2.nh/20)*20}):n;});});}
       if(connectModeRef.current&&connectSourceRef.current!=null)setCursorWorld(screenToWorld(e.clientX,e.clientY));
     }
     function onUp(){var it=inter.current;if(it.mode==='drag'&&!it.moved){handleNodeClick(it.id);}else if(it.snap){var wasDrag=(it.mode==='drag'||it.mode==='area-drag'||it.mode==='note-drag')&&it.moved;var wasResize=it.mode==='area-resize'||it.mode==='note-resize';if(wasDrag||wasResize){var h2=historyRef.current.slice(-49);h2.push(it.snap);historyRef.current=h2;setUndoCount(h2.length);}}if(it.mode==='drag'&&it.moved&&it.finalX!=null){var cx=it.finalX+NODE_W/2,cy=it.finalY+NODE_H/2;var bestArea=null;areasRef.current.forEach(function(a){if(cx>=a.x&&cx<=a.x+a.w&&cy>=a.y&&cy<=a.y+a.h){if(!bestArea||a.w*a.h<bestArea.w*bestArea.h)bestArea=a;}});var newPid=bestArea?bestArea.id:undefined;setNodes(function(p){return p.map(function(n){return n.id===it.id?Object.assign({},n,{parentId:newPid}):n;});});}inter.current={mode:'idle'};}
@@ -2266,15 +2300,22 @@ function App() {
     return function(){window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);};
   },[]);
 
-  function onDrop(e){e.preventDefault();var nd=e.dataTransfer.getData('text/infradraw-node'),ad=e.dataTransfer.getData('text/infradraw-area'),isNote=e.dataTransfer.getData('text/infradraw-note'),w=screenToWorld(e.clientX,e.clientY);if(nd)addNodeAt(nd,w.x,w.y);else if(ad)addAreaAt(ad,w.x,w.y);else if(isNote)addNoteAt(w.x,w.y);}
+  function onDrop(e){e.preventDefault();var nd=e.dataTransfer.getData('text/infradraw-node'),ad=e.dataTransfer.getData('text/infradraw-area'),isNote=e.dataTransfer.getData('text/infradraw-note'),w=screenToWorld(e.clientX,e.clientY),sx=Math.round(w.x/20)*20,sy=Math.round(w.y/20)*20;if(nd)addNodeAt(nd,sx,sy);else if(ad)addAreaAt(ad,sx,sy);else if(isNote)addNoteAt(sx,sy);}
   function onDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='copy';}
-  function paletteAddNode(type){var rect=svgRef.current.getBoundingClientRect(),w=screenToWorld(rect.left+rect.width/2,rect.top+rect.height/2);addNodeAt(type,w.x+(Math.random()-.5)*60,w.y+(Math.random()-.5)*60);}
+  function paletteAddNode(type){
+    var rect=svgRef.current.getBoundingClientRect(),w=screenToWorld(rect.left+rect.width/2,rect.top+rect.height/2);
+    var idx=nodesRef.current.length;
+    var SX=NODE_W+40, SY=NODE_H+40;
+    var col=idx%2, row=Math.floor(idx/2);
+    addNodeAt(type, w.x+(col-0.5)*SX, w.y+row*SY);
+  }
   function paletteAddArea(type){var rect=svgRef.current.getBoundingClientRect(),w=screenToWorld(rect.left+rect.width/2,rect.top+rect.height/2);addAreaAt(type,w.x+(Math.random()-.5)*80,w.y+(Math.random()-.5)*80);}
   function paletteAddNote(){var rect=svgRef.current.getBoundingClientRect(),w=screenToWorld(rect.left+rect.width/2,rect.top+rect.height/2);addNoteAt(w.x+(Math.random()-.5)*100,w.y+(Math.random()-.5)*100);}
   function fitToScreen(){var allN=nodesRef.current,allA=areasRef.current,allNt=notesRef.current;if(!allN.length&&!allA.length&&!allNt.length){setTransform({x:0,y:0,scale:1});return;}var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;allN.forEach(function(n){minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);maxX=Math.max(maxX,n.x+NODE_W);maxY=Math.max(maxY,n.y+NODE_H);});allA.forEach(function(a){minX=Math.min(minX,a.x);minY=Math.min(minY,a.y);maxX=Math.max(maxX,a.x+a.w);maxY=Math.max(maxY,a.y+a.h);});allNt.forEach(function(nt){minX=Math.min(minX,nt.x);minY=Math.min(minY,nt.y);maxX=Math.max(maxX,nt.x+nt.w);maxY=Math.max(maxY,nt.y+nt.h);});var pad=80,rect=svgRef.current.getBoundingClientRect(),W=rect.width,H=rect.height,cW=maxX-minX,cH=maxY-minY,scale=clamp(Math.min(W/(cW+pad*2),H/(cH+pad*2)),MIN_SCALE,MAX_SCALE);setTransform({x:W/2-(minX+cW/2)*scale,y:H/2-(minY+cH/2)*scale,scale});}
   function zoomBy(f){var t=transformRef.current,rect=svgRef.current.getBoundingClientRect(),mx=rect.width/2,my=rect.height/2,ns=clamp(t.scale*f,MIN_SCALE,MAX_SCALE),k=ns/t.scale;setTransform({x:mx-(mx-t.x)*k,y:my-(my-t.y)*k,scale:ns});}
 
   // ======== RENDER ========
+  var totalCost=nodes.filter(function(n){return n.type==='vps';}).reduce(function(sum,v){return sum+getPlanCost((v.config&&v.config.provider)||'hetzner',(v.config&&v.config.plan)||'cx31');},0);
 
   // Sidebar
   function makePalNode(key){var def=SERVICES[key];return h('div',{key:'node-'+key,className:'pal-item',draggable:true,onDragStart:function(e){e.dataTransfer.setData('text/infradraw-node',key);},onClick:function(){paletteAddNode(key);}},[h('div',{key:'i',className:'pal-ico',style:{background:def.color}},def.icon),h('div',{key:'l',className:'pal-label'},def.label)]);}
@@ -2393,7 +2434,13 @@ function App() {
     if(hasWarn){items.push(h('div',{key:'wt',className:'val-sec-title'},'Advertencias ('+valRes.warnings.length+')'));valRes.warnings.forEach(function(m,i){items.push(h('div',{key:'w'+i,className:'val-item val-warn'},[h('span',{key:'ic'},'⚠️'),h('span',{key:'m'},m)]));});}
     if(!hasErr&&!hasWarn)items.push(h('div',{key:'ok',className:'val-ok'},'✓ Arquitectura válida. Todo en orden.'));
     var foot=[h('button',{key:'close',className:'btn',onClick:function(){setShowValidation(false);}},'Cerrar')];
-    if(!hasErr)foot.push(h('button',{key:'exp',className:'btn primary',onClick:function(){setShowValidation(false);doExportZip();}},hasWarn?'Exportar de todas formas':'Exportar proyecto'));
+    if(!hasErr){
+      foot.push(h('button',{key:'exp',className:'btn primary',onClick:function(){setShowValidation(false);doExportZip();}},hasWarn?'Exportar de todas formas':'Exportar proyecto'));
+    }
+    if(hasErr){
+      foot.unshift(h('span',{key:'err-note',style:{flex:'1',fontSize:'11px',color:'var(--danger)',alignSelf:'center'}},'Los archivos generados pueden no funcionar correctamente.'));
+      foot.push(h('button',{key:'exp-err',className:'btn',style:{borderColor:'var(--danger)',color:'var(--danger)'},onClick:function(){setShowValidation(false);doExportZip();}},'⚠️ Exportar con errores'));
+    }
     return h('div',{className:'modal-ov',onClick:function(){setShowValidation(false);}},
       h('div',{className:'modal',onClick:function(e){e.stopPropagation();}},[
         h('div',{key:'h',className:'modal-head'},h('div',{className:'modal-title'},'🔍 Validación de arquitectura')),
@@ -2452,6 +2499,7 @@ function App() {
     h('button',{key:'zi',className:'btn',onClick:function(){zoomBy(1.2);}},'+'),
     h('button',{key:'rv',className:'btn',onClick:fitToScreen},'⊡ Encuadrar'),
     h('div',{key:'s3',className:'btn-sep'}),
+    totalCost>0 ? h('div',{key:'cost',className:'cost-badge',style:{display:'flex',alignItems:'center',background:'var(--panel)',padding:'4px 10px',borderRadius:'4px',fontSize:'12px',fontWeight:'bold',color:'var(--accent)',border:'1px solid var(--border)'}},'💰 Est: ~$'+Math.round(totalCost)+'/mes') : null,
     h('button',{key:'val',className:'btn val-badge',title:'Validar arquitectura',onClick:function(){setShowValidation(true);}},['🔍 Validar',valTotal>0?h('span',{key:'c',className:'val-count'+(valRes.errors.length?'':' warn')},String(valRes.errors.length||valRes.warnings.length)):null]),
     h('div',{key:'expW',className:'export-wrap',onClick:function(e){e.stopPropagation();}},[
       h('button',{key:'exp',className:'btn',onClick:function(){setShowExportMenu(function(v){return !v;});}},['📤 Exportar',' ▾']),

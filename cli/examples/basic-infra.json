@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "n1",
+      "type": "vps",
+      "x": 0,
+      "y": 0,
+      "config": {
+        "provider": "hetzner",
+        "plan": "cx31",
+        "region": "nbg1",
+        "os": "ubuntu-24.04",
+        "role": "app+db"
+      }
+    },
+    {
+      "id": "n2",
+      "type": "traefik",
+      "parentId": "a1",
+      "x": 10,
+      "y": 10,
+      "config": {
+        "version": "v3.0",
+        "cert_email": "admin@example.com"
+      }
+    },
+    {
+      "id": "n3",
+      "type": "frontend",
+      "parentId": "a1",
+      "x": 10,
+      "y": 100,
+      "config": {
+        "framework": "nextjs",
+        "port": 3000
+      }
+    },
+    {
+      "id": "n4",
+      "type": "postgres",
+      "parentId": "a2",
+      "x": 10,
+      "y": 10,
+      "config": {
+        "version": "16",
+        "pgbouncer_enabled": false
+      }
+    }
+  ],
+  "areas": [
+    {
+      "id": "a1",
+      "type": "net-public",
+      "x": -50,
+      "y": -50,
+      "w": 300,
+      "h": 300
+    },
+    {
+      "id": "a2",
+      "type": "net-db",
+      "x": 350,
+      "y": -50,
+      "w": 300,
+      "h": 300
+    }
+  ],
+  "conns": []
+}

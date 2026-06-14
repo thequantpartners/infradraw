@@ -1,0 +1,31 @@
+# Active Decisions
+
+## 1. Uso de PCA en Modo `local-only`
+*   **Fecha:** 2026-06-13
+*   **Estado:** Aprobado
+*   **Contexto:** El proyecto no requiere actualmente indexación semántica en la nube ni tiene credenciales de OpenAI activas en local.
+*   **Decisión:** Utilizar el modo offline `local-only` de PCA CLI para llevar el histórico de cambios de contexto sin dependencias externas de red o API keys.
+
+## 2. Frontend Autocontenido en archivos HTML únicos
+*   **Fecha:** 2026-06-13
+*   **Estado:** Aprobado
+*   **Contexto:** Se busca un despliegue rápido, simple y sin herramientas de compilación complejas.
+*   **Decisión:** Todo el flujo interactivo de canvas se ejecuta en [canvas.html](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/canvas.html) e [index.html](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/index.html) cargando React y ReactDOM desde CDNs públicos.
+
+## 3. Persistencia Serverless con Vercel KV (Redis)
+*   **Fecha:** 2026-06-13
+*   **Estado:** Aprobado
+*   **Contexto:** Se requiere guardar los diagramas de los usuarios sin crear un backend pesado de base de datos ni manejar autenticación compleja.
+*   **Decisión:** Utilizar Vercel KV en endpoints Serverless (`api/project` y `api/projects`) para leer y escribir estados directamente en formato JSON.
+
+## 4. Adopción de Flujo de Trabajo PCA-First y Reporte Obligatorio de Fallos
+*   **Fecha:** 2026-06-13
+*   **Estado:** Aprobado
+*   **Contexto:** Garantizar la consistencia del contexto del repositorio para cualquier agente que entre al espacio de trabajo.
+*   **Decisión:** Obligar el uso por defecto de los comandos del CLI de PCA (status, commit, logs, doctor) en cada tarea y la detención inmediata con reporte detallado ante cualquier error del entorno o pruebas.
+
+## 5. Simulador de Costos y Nodos como Parte del Frontend Nativo
+*   **Fecha:** 2026-06-13
+*   **Estado:** Aprobado
+*   **Contexto:** Se solicitó evaluar e implementar mejoras en la experiencia de usuario (alineación, nuevos nodos y evaluación de costos).
+*   **Decisión:** Mantener la implementación de estas mejoras puramente en el cliente (`canvas.html`), aprovechando el ciclo de renderizado nativo de la SPA para calcular estimaciones de precio sin agregar complejidad de dependencias externas.
