@@ -78,4 +78,8 @@
 *   **Contexto:** El CLI debe autenticarse contra la base de datos de InfraDraw de forma segura sin pedirle al usuario que escriba manualmente sus tokens Firebase.
 *   **Decisión:** Implementar un flujo donde `infradraw login` inicia un servidor HTTP local en un puerto aleatorio alto, abre el navegador apuntando a `/cli-auth?port={port}`, y tras el login con Google de Firebase, el navegador envía los tokens vía POST localmente al CLI. Las credenciales se guardan en `~/.infradraw/auth.json`.
 
-
+## 14. Refactorización del Bot DevOps para Zero-Cost Monitoring y Self-Healing
+*   **Fecha:** 2026-06-15
+*   **Estado:** Aprobado
+*   **Contexto:** Se detectó que el monitoreo de recursos en el host usando comandos shell como subprocesos consumía ciclos innecesarios. Adicionalmente, el bot requería interacción manual para comandos repetitivos.
+*   **Decisión:** Reemplazar el chequeo de CPU/RAM por APIs nativas de Node.js (`os`). Cambiar el prompt de Gemini a salida JSON estricta y dotar al bot de memoria local (`playbooks.json`) para habilitar capacidades de "Ejecutar y Recordar" (Auto-Healing). Se mantiene soporte heurístico dual sin API Key.

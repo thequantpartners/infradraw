@@ -3,6 +3,9 @@
 ## [Unreleased] - 2026-06-14
 
 ### Added
+- Refactorización de la arquitectura del DevOps Bot en Telegram para usar el módulo nativo `os` en lugar de `child_process`, optimizando drásticamente la carga de CPU y memoria en el VPS.
+- Implementación del modo Self-Healing ("Ejecutar y Recordar") en el bot de Telegram, generando memoria local persistente en `playbooks.json` para auto-corregir contenedores.
+- Soporte para Modo Dual en el bot DevOps: Operación por heurística básica sin requerir API key, o modo inteligente estructurado en JSON con la API de Gemini activada.
 - Rediseño UX/UI premium del dashboard de proyectos (`index.html`) con efectos glassmorphic, brillo radial de fondo, tipografía Inter, micro-animaciones y soporte responsivo móvil completo.
 - Solución a condición de carrera en inicialización del canvas (`canvas.html`) agregando un callback `__INFRADRAW_READY` para evitar llamadas a la API sin token de Firebase Auth.
 - Migración completa de InfraDraw a modelo SaaS con autenticación Firebase (Google Sign-In) y persistencia en base de datos aislada por usuario usando Vercel KV.
