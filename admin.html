@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InfraDraw — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  const firebaseConfig = {
+    apiKey: "AIzaSyCzla1NHcQ4VOi7iOoW3HEPyocLJpP5OSE",
+    authDomain: "infradraw-f65fa.firebaseapp.com",
+    projectId: "infradraw-f65fa",
+    storageBucket: "infradraw-f65fa.firebasestorage.app",
+    messagingSenderId: "528220544849",
+    appId: "1:528220544849:web:588de9c7231d08ba2bbd70"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const loadingEl = document.getElementById('auth-loading');
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = '/landing.html'; return; }
+    const idToken = await user.getIdToken();
+    window.__INFRADRAW_TOKEN = idToken;
+    window.__INFRADRAW_USER_NAME = user.displayName || user.email;
+    window.__INFRADRAW_USER_EMAIL = user.email || '';
+    window.__INFRADRAW_USER_PHOTO = user.photoURL || '';
+    // Refresh token silently every 50 min
+    setInterval(async () => { window.__INFRADRAW_TOKEN = await user.getIdToken(true); }, 50 * 60 * 1000);
+
+    loadingEl.style.display = 'none';
+    document.getElementById('root').style.display = '';
+    window.__INFRADRAW_SIGNOUT = () => signOut(auth).then(() => window.location.href = '/landing.html');
+    window.__INFRADRAW_READY && window.__INFRADRAW_READY();
+  });
+</script>
+<style>
+  :root {
+    --bg: #060b14;
+    --panel: #0d1521;
+    --panel-2: #111c2e;
+    --border: #1e2d44;
+    --text: #e8f0fe;
+    --muted: #7a92b4;
+    --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.25);
+    --danger: #ef4444;
+    --green: #10b981;
+    --grad: linear-gradient(135deg, #4f8cff 0%, #7c5af0 100%);
+    --card-bg: rgba(13, 21, 33, 0.7);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { min-height: 100vh; background: var(--bg); color: var(--text); }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% -10%, rgba(79,140,255,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 90% 90%, rgba(124,90,240,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(13, 21, 33, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .brand {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.6px;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-decoration: none;
+  }
+  .brand span { font-weight: 800; }
+  .brand-sub { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: 0.2px; }
+
+  .user-area { display: flex; align-items: center; gap: 16px; }
+  .user-avatar { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); object-fit: cover; }
+  .user-name { font-size: 14px; font-weight: 500; color: var(--text); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .btn-signout {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-signout:hover { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.05); }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 40px 24px; position: relative; z-index: 1; }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .section-title { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: 0.5px; }
+
+  .admin-table-container {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow-x: auto;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  table { width: 100%; border-collapse: collapse; text-align: left; }
+  th {
+    padding: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(17, 28, 46, 0.6);
+  }
+  td {
+    padding: 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+  .user-cell { display: flex; align-items: center; gap: 12px; }
+  .user-email { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  .plan-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .plan-badge.free { background: rgba(122, 146, 180, 0.1); border: 1px solid rgba(122, 146, 180, 0.2); color: var(--muted); }
+  .plan-badge.pro  { background: rgba(79, 140, 255, 0.15); border: 1px solid rgba(79, 140, 255, 0.35); color: var(--accent); }
+
+  .action-btn {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(79, 140, 255, 0.05); }
+
+  .error-banner {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger);
+    border-radius: 16px;
+    padding: 18px 24px;
+    color: #fca5a5;
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+
+  #auth-loading { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .auth-spinner {
+    width: 44px; height: 44px;
+    border: 3px solid var(--panel-2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 24px;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div id="auth-loading"><div class="auth-spinner"></div></div>
+<div id="root" style="display:none"></div>
+<script>
+(function () {
+"use strict";
+var h = React.createElement;
+var useState = React.useState, useEffect = React.useEffect;
+
+function authHeaders() {
+  var token = window.__INFRADRAW_TOKEN || '';
+  return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+}
+
+function AdminApp() {
+  var [users, setUsers] = useState([]);
+  var [loading, setLoading] = useState(true);
+  var [error, setError] = useState(null);
+
+  function loadUsers() {
+    setLoading(true);
+    fetch('/api/admin/users', { headers: authHeaders() })
+      .then(function (r) {
+        if (r.status === 403) throw new Error('Access Denied');
+        return r.json();
+      })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        setUsers(data);
+        setError(null);
+        setLoading(false);
+      })
+      .catch(function (err) {
+        if (err.message === 'Access Denied') {
+          window.location.href = '/index.html';
+        } else {
+          setError(err.message);
+          setLoading(false);
+        }
+      });
+  }
+
+  useEffect(function () {
+    if (window.__INFRADRAW_TOKEN) {
+      loadUsers();
+    } else {
+      window.__INFRADRAW_READY = loadUsers;
+    }
+  }, []);
+
+  function togglePlan(uid, currentPlan) {
+    var newPlan = currentPlan === 'free' ? 'pro' : 'free';
+    fetch('/api/admin/user', {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ uid: uid, newPlan: newPlan })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        setUsers(function(prev) {
+          return prev.map(function(u) {
+            return u.uid === uid ? Object.assign({}, u, { plan: newPlan }) : u;
+          });
+        });
+      })
+      .catch(function (err) { alert('Error updating plan: ' + err.message); });
+  }
+
+  var headerEl = h('div', { className: 'header' }, [
+    h('div', { key: 'brand' }, [
+      h('a', { key: 'b', className: 'brand', href: '/' }, ['Infra', h('span', { key: 's' }, 'Draw')]),
+      h('div', { key: 'sub', className: 'brand-sub' }, 'Superadmin Dashboard')
+    ]),
+    h('div', { key: 'right', className: 'user-area' }, [
+      window.__INFRADRAW_USER_PHOTO ? h('img', { key: 'photo', src: window.__INFRADRAW_USER_PHOTO, className: 'user-avatar', alt: '' }) : null,
+      h('span', { key: 'name', className: 'user-name' }, window.__INFRADRAW_USER_NAME || ''),
+      h('button', { key: 'so', className: 'btn-signout', onClick: function() { window.__INFRADRAW_SIGNOUT && window.__INFRADRAW_SIGNOUT(); } }, 'Salir')
+    ])
+  ]);
+
+  var mainContent;
+  if (loading) {
+    mainContent = h('div', { style: { textAlign: 'center', padding: '40px' } }, h('div', { className: 'auth-spinner', style: { margin: '0 auto' } }));
+  } else if (error) {
+    mainContent = h('div', { className: 'error-banner' }, 'Error: ' + error);
+  } else {
+    var rows = users.map(function(user) {
+      return h('tr', { key: user.uid }, [
+        h('td', { key: 'user' }, [
+          h('div', { key: 'name', style: { fontWeight: 600 } }, user.name || 'Sin nombre'),
+          h('div', { key: 'email', className: 'user-email' }, user.email)
+        ]),
+        h('td', { key: 'plan' }, h('span', { className: 'plan-badge ' + (user.plan || 'free') }, user.plan === 'pro' ? '⭐ PRO' : 'FREE')),
+        h('td', { key: 'date' }, new Date(user.createdAt).toLocaleDateString()),
+        h('td', { key: 'actions' }, h('button', {
+          className: 'action-btn',
+          onClick: function() { togglePlan(user.uid, user.plan || 'free'); }
+        }, user.plan === 'pro' ? 'Downgrade to FREE' : 'Upgrade to PRO'))
+      ]);
+    });
+
+    mainContent = h('div', { className: 'admin-table-container' },
+      h('table', null, [
+        h('thead', { key: 'thead' }, h('tr', null, [
+          h('th', { key: 'u' }, 'User'),
+          h('th', { key: 'p' }, 'Plan'),
+          h('th', { key: 'd' }, 'Joined'),
+          h('th', { key: 'a' }, 'Actions')
+        ])),
+        h('tbody', { key: 'tbody' }, rows)
+      ])
+    );
+  }
+
+  return h('div', {}, [
+    headerEl,
+    h('div', { className: 'main' }, [
+      h('a', { className: 'back-link', href: '/index.html' }, '← Volver a mis diagramas'),
+      h('div', { className: 'section-head' }, h('h1', { className: 'section-title' }, 'Registered Users')),
+      mainContent
+    ])
+  ]);
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(AdminApp));
+})();
+</script>
+</body>
+</html>

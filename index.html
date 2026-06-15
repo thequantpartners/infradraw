@@ -26,6 +26,7 @@
     const idToken = await user.getIdToken();
     window.__INFRADRAW_TOKEN = idToken;
     window.__INFRADRAW_USER_NAME = user.displayName || user.email;
+    window.__INFRADRAW_USER_EMAIL = user.email || '';
     window.__INFRADRAW_USER_PHOTO = user.photoURL || '';
     // Refresh token silently every 50 min
     setInterval(async () => { window.__INFRADRAW_TOKEN = await user.getIdToken(true); }, 50 * 60 * 1000);
@@ -678,12 +679,18 @@ function App() {
   var userPhoto = window.__INFRADRAW_USER_PHOTO
     ? h('img', { key: 'photo', src: window.__INFRADRAW_USER_PHOTO, className: 'user-avatar', alt: '' })
     : null;
+
+  var adminLink = window.__INFRADRAW_USER_EMAIL === 'admin@infradraw.com'
+    ? h('a', { key: 'admin', href: '/admin.html', className: 'btn-signout', style: { textDecoration: 'none', color: 'var(--accent)', borderColor: 'var(--accent)' } }, 'Admin')
+    : null;
+
   var headerEl = h('div', { className: 'header' }, [
     h('div', { key: 'brand' }, [
       h('div', { key: 'b', className: 'brand' }, ['Infra', h('span', { key: 's' }, 'Draw')]),
       h('div', { key: 'sub', className: 'brand-sub' }, 'Canvas de infraestructura Docker-first')
     ]),
     h('div', { key: 'right', className: 'user-area' }, [
+      adminLink,
       planLabel,
       userPhoto,
       h('span', { key: 'name', className: 'user-name' }, window.__INFRADRAW_USER_NAME || ''),
