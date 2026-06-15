@@ -293,13 +293,93 @@
   .loading-overlay.hidden { opacity:0; pointer-events:none; }
   .spinner { width:40px;height:40px;border:3px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite; }
   @keyframes spin{to{transform:rotate(360deg)}}
+  /* Modal drag handle (mobile) */
+  .modal-drag { width: 40px; height: 4px; background: var(--border2); border-radius: 4px; margin: 0 auto 20px; display: none; }
 
-  @media(max-width:768px) {
-    nav { padding: 0 20px; }
-    .nav-link.hide-mobile { display: none; }
-    #bot { grid-template-columns: 1fr; }
-    .pricing-grid { grid-template-columns: 1fr; }
-    footer { flex-direction: column; gap: 12px; text-align: center; }
+  /* ── RESPONSIVE ─────────────────────────────────── */
+
+  /* Tablet */
+  @media (max-width: 1024px) {
+    #bot { gap: 40px; }
+    .pricing-grid { gap: 16px; }
+    .features-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    /* Nav */
+    nav { padding: 0 20px; height: 60px; }
+    .nav-logo { font-size: 18px; }
+    .nav-link { display: none; }
+    .btn-login-nav { font-size: 13px; padding: 8px 14px; gap: 6px; }
+    .btn-login-nav .btn-login-text { display: none; }
+
+    /* Hero */
+    .hero { padding: 88px 20px 56px; min-height: auto; }
+    .hero-badge { font-size: 12px; margin-bottom: 20px; }
+    .hero-title { letter-spacing: -.03em; }
+    .hero-sub { font-size: 16px; max-width: 100%; }
+    .hero-ctas { margin-top: 28px; flex-direction: column; align-items: stretch; gap: 10px; }
+    .btn-primary, .btn-secondary { width: 100%; justify-content: center; font-size: 15px; padding: 14px 20px; }
+
+    /* Canvas mock — simplified on mobile */
+    .hero-canvas-wrap { margin-top: 40px; }
+    .mock-body { min-height: 180px; }
+    .mock-sidebar { display: none; }
+    .mock-topbar { padding: 10px 16px; }
+    .mock-dot { width: 10px; height: 10px; }
+    .mock-title { font-size: 12px; }
+    .mock-node { font-size: 10px; padding: 6px 10px; }
+    .mock-area { font-size: 9px; }
+
+    /* Sections */
+    section { padding: 64px 20px; }
+    .section-title { max-width: 100%; }
+    .section-sub { font-size: 15px; max-width: 100%; }
+
+    /* Features */
+    .features-grid { margin-top: 36px; gap: 14px; grid-template-columns: 1fr; }
+    .feature-card { padding: 22px; }
+    .feature-icon { font-size: 24px; margin-bottom: 12px; }
+    .feature-title { font-size: 16px; }
+
+    /* Bot */
+    #bot { grid-template-columns: 1fr; gap: 36px; }
+    #bot .bot-phone { order: 2; }
+    #bot > div:last-child { order: 1; }
+    .msg { font-size: 12px; }
+    .msg-btn { font-size: 11px; padding: 5px 10px; }
+
+    /* Pricing */
+    .pricing-grid { grid-template-columns: 1fr; gap: 28px; margin-top: 40px; }
+    .pricing-card { padding: 28px 24px; }
+    .pricing-card.pro { order: -1; } /* PRO first on mobile */
+    .plan-price { font-size: 40px; }
+
+    /* Footer */
+    footer { padding: 36px 20px; flex-direction: column; gap: 10px; text-align: center; }
+
+    /* Modal */
+    .modal { padding: 32px 24px; border-radius: 16px 16px 0 0; position: absolute; bottom: 0; left: 0; right: 0; width: 100%; max-width: 100%; animation: slideUp .3s ease; }
+    .modal-overlay.open { align-items: flex-end; }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .modal-drag { display: block; }
+    .modal-icon { font-size: 40px; }
+    .modal-title { font-size: 20px; }
+    .modal-sub { font-size: 14px; margin-bottom: 22px; }
+  }
+
+  /* Small phones */
+  @media (max-width: 480px) {
+    .hero-canvas-wrap { display: none; } /* Hide mock, focus on CTA */
+    .hero { padding-bottom: 48px; }
+    .features-grid { gap: 10px; }
+    .feature-card { padding: 18px; }
+    nav { padding: 0 16px; }
+    .pricing-card { padding: 24px 20px; }
+    .plan-features { gap: 8px; }
+    .plan-feature { font-size: 13px; }
+    section { padding: 52px 16px; }
   }
 </style>
 </head>
@@ -312,10 +392,12 @@
 <nav>
   <div class="nav-logo">Infra<span>Draw</span></div>
   <div class="nav-right">
-    <a href="#features" class="nav-link hide-mobile">Características</a>
-    <a href="#pricing" class="nav-link hide-mobile">Precios</a>
+    <a href="#features" class="nav-link">Características</a>
+    <a href="#pricing" class="nav-link">Precios</a>
     <button class="btn-login-nav" id="navLoginBtn">
-      🚀 Iniciar sesión con Google
+      <span>🚀</span>
+      <span class="btn-login-text">Iniciar sesión con Google</span>
+      <span class="btn-login-short" style="display:none">Google</span>
     </button>
   </div>
 </nav>
@@ -515,6 +597,7 @@
 <!-- Login Modal -->
 <div class="modal-overlay" id="loginModal">
   <div class="modal">
+    <div class="modal-drag"></div>
     <div class="modal-icon">🛸</div>
     <div class="modal-title">Bienvenido a InfraDraw</div>
     <div class="modal-sub">Inicia sesión con tu cuenta de Google para empezar a diseñar infraestructura en minutos.</div>
@@ -594,6 +677,26 @@
       document.getElementById('loginModal').classList.remove('open');
     }
   });
+
+  // Responsive nav label
+  function updateNavLabel() {
+    const isMobile = window.innerWidth <= 768;
+    document.querySelector('.btn-login-text').style.display = isMobile ? 'none' : '';
+    document.querySelector('.btn-login-short').style.display = isMobile ? '' : 'none';
+  }
+  updateNavLabel();
+  window.addEventListener('resize', updateNavLabel);
+
+  // Swipe down to close modal on mobile
+  const modal = document.querySelector('.modal');
+  let touchStartY = 0;
+  modal.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; });
+  modal.addEventListener('touchend', e => {
+    if (e.changedTouches[0].clientY - touchStartY > 60) {
+      document.getElementById('loginModal').classList.remove('open');
+    }
+  });
+
 </script>
 </body>
 </html>
