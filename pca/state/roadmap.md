@@ -22,6 +22,6 @@
 - [x] Implementación de mejoras de experiencia de usuario: Snap-to-Grid, expansión del catálogo (Supabase, Cron) y badge dinámico de simulación de costos.
 - [x] Creación del CLI de InfraDraw desacoplado (`infradraw-cli`) con comandos de validación, compilación a IaC y creación interactiva de topologías desde la terminal.
 - [x] Integración de Google Cloud (GCP) como proveedor principal con despliegue completo de Terraform.
-- [x] Creación de un asistente DevOps en Telegram embebido en la topología para monitorización de salud y reinicio de contenedores.
+- [x] Creación de un asistente DevOps interactivo en Telegram embebido en la topología con diagnóstico de salud de contenedores y recursos (CPU/RAM/Disco) usando Gemini AI y soporte para auto-escalado interactivo en GCP.
 - [x] Selector global de nube (Private Cloud vs GCP) en el canvas con equivalencias de servicios de GCP, locking de proveedores a 'gcloud' y Terraform nativo para Google Cloud Storage (GCS).
 

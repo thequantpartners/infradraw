@@ -154,6 +154,7 @@ InfraDraw topology files use a simple, structured JSON schema. An AI agent or sc
     *   `port`: Running port (e.g. `3000`, `8080`).
 *   `postgres` / `redis`: Datastores. Optimized automatically.
 *   `cloudflare`: Global DNS manager. Requires `domain` in config.
+*   `devopsbot`: DevOps Virtual Assistant on Telegram. Requires `telegram_token` and `chat_id`. Automatically monitors container and server resources, diagnoses logs using Gemini AI, and allows interactive auto-scaling/remediations (on GCP).
 
 ---
 

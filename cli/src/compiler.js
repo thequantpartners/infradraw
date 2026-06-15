@@ -1040,6 +1040,12 @@ JWT_SECRET=                # REQUERIDO — generar: openssl rand -base64 64
 TELEGRAM_BOT_TOKEN=${token}
 TELEGRAM_CHAT_ID=${chatId}
 GEMINI_API_KEY=            # Añadir si se requieren sugerencias de IA
+CLOUD_PROVIDER=private     # 'private' o 'gcloud'
+HEALTH_CHECK_INTERVAL_MINUTES=5
+GCP_PROJECT_ID=            # Solo si CLOUD_PROVIDER = gcloud
+GCP_INSTANCE_NAME=         # Solo si CLOUD_PROVIDER = gcloud
+GCP_ZONE=                  # Solo si CLOUD_PROVIDER = gcloud
+GCP_CREDENTIALS_JSON_PATH= # Opcional: ruta a credenciales gcp si no usa IAM default
 `;
   }
   return out;

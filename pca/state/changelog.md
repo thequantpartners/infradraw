@@ -10,6 +10,9 @@
 - Integración nativa de Google Cloud (GCP) en el compilador web y CLI, incluyendo soporte de planes e2, red VPC y generación de `google_compute_instance`.
 - Inclusión del nuevo nodo 'DevOps Bot' (Telegram) para la gestión y monitorización activa de contenedores Docker mediante comandos interactivos en chat.
 - Exportación automatizada del bot en Node.js dentro del subdirectorio `bot/` al compilar la arquitectura.
+- Asistente Virtual DevOps interactivo en Telegram con soporte para monitoreo de recursos del VPS (disco, RAM, carga de CPU), heartbeat por hora y diagnóstico profundo de caídas de contenedores usando la API de Gemini (SDK `@google/genai`).
+- Diferenciación de auto-remediación en el bot: en GCP permite auto-escalar y redimensionar instancias de Compute Engine de forma interactiva ("Aplicar Solución Sugerida" con SDK `@google-cloud/compute`), mientras que en nubes privadas se limita a sugerencias informativas y acciones manuales.
+- Respuestas dinámicas DevOps a mensajes directos del operador humano utilizando prompts de sistema de Gemini en chat abierto.
 - Selector global de nube "Private Cloud vs GCP" en la barra lateral del canvas para el filtrado inteligente de nodos y preconfiguración/bloqueo de proveedores VPS/Compute Engine a `gcloud` en modo GCP.
 - Soporte en compilador (web y CLI) para aprovisionar buckets de Google Cloud Storage (GCS) mediante `google_storage_bucket` en Terraform si hay un nodo `storage` en modo GCP.
 - Exportación/importación del modo de nube persistido en formato JSON.

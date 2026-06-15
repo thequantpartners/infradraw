@@ -42,11 +42,11 @@
 *   **Contexto:** Facilitar que agentes autónomos de Inteligencia Artificial (IAs) integren y automaticen el ciclo de validación, compilación y generación de topologías de InfraDraw sin lidiar con formatos planos inconsistentes o wizards interactivos.
 *   **Decisión:** Dotar a la CLI con flags `--json` para validar y compilar, implementar el comando interactivo/no-interactivo `create --non-interactive` y añadir el comando `schema` para autodescubrimiento de capacidades soportadas directamente como datos de salida estructurados.
 
-## 8. Arquitectura del DevOps Bot y Notificaciones
+## 8. Arquitectura del DevOps Bot y Notificaciones (Con IA y Auto-Remediación)
 *   **Fecha:** 2026-06-14
 *   **Estado:** Aprobado
-*   **Contexto:** Se requiere monitorear la infraestructura exportada e interactuar con ella desde Telegram de manera segura y sin SSH directo.
-*   **Decisión:** Inyectar dinámicamente un bot nativo en Node.js en la carpeta `bot/` al compilar la arquitectura. El bot se enlaza a `/var/run/docker.sock` en modo solo lectura de eventos, y notifica proactivamente alertas con botones de reinicio interactivo inline.
+*   **Contexto:** Se requiere monitorear la infraestructura exportada e interactuar con ella desde Telegram de manera segura y sin SSH directo, diagnosticando errores con IA y ejecutando auto-remediación según la nube.
+*   **Decisión:** Inyectar dinámicamente un bot en Node.js (`bot/index.js`) con soporte de Gemini (`gemini-2.5-flash`), monitoreo de recursos del VPS (disco, RAM, carga de CPU) y eventos Docker. En Private Cloud el bot asiste diagnósticamente y ofrece botones para operación manual (`Solucionar yo mismo`). En GCP (`gcloud`), el bot integra el SDK `@google-cloud/compute` permitiendo realizar auto-escalado interactivo de la instancia (`Aplicar Solución Sugerida`). Adicionalmente, el bot responde dudas y consultas técnicas en chat abierto y envía un reporte de heartbeat `"Todo OK"` cada hora.
 
 ## 9. Selector Global de Nube y Nodos Equivalentes de GCP
 *   **Fecha:** 2026-06-14
