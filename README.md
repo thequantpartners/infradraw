@@ -81,6 +81,51 @@ Outputs all supported providers, regions, plans, frameworks, and datastores in J
 infradraw schema
 ```
 
+### E. Session & Authentication Commands
+Manage CLI authentication for SaaS integration:
+
+*   **Interactive Web Login:**
+    ```bash
+    infradraw login
+    ```
+    Opens the default web browser to the authorization page, authenticates using Firebase Auth (Google Sign-In), and transfers the access tokens back to a local transient HTTP server. Credentials are securely stored at `~/.infradraw/auth.json`.
+
+*   **Check Active Session:**
+    ```bash
+    infradraw whoami [--json]
+    ```
+    Prints information about the logged-in user and their current plan tier. Automatically refreshes expired authentication tokens.
+
+*   **Logout CLI Session:**
+    ```bash
+    infradraw logout
+    ```
+    Removes locally stored session credentials.
+
+---
+
+## 💳 SaaS Architecture & Subscription Plans
+
+InfraDraw operates as a SaaS platform with secure user accounts, project isolation, and tier-based feature gates:
+
+*   **Authentication & Database:** Powered by **Firebase Auth** (Google Provider) on the frontend and integrated with Vercel Key-Value (KV) store on the backend. Projects are isolated on a per-user basis using the user's Firebase UID.
+*   **Billing & Payments:** Integrated with **Lemon Squeezy**. Webhooks receive automated subscription updates to grant plan levels instantly.
+
+### Feature Matrix by Plan Tier:
+
+| Feature | FREE Plan | PRO Plan ($99 USD / mo) |
+| :--- | :--- | :--- |
+| **Workspace Projects** | Unlimited | Unlimited |
+| **Private Cloud Deployment** | Hetzner, DigitalOcean, Contabo, Vultr, Linode | Hetzner, DigitalOcean, Contabo, Vultr, Linode |
+| **Google Cloud Platform (GCP)** | ❌ Blocked (Compile & Validation) | ✅ Fully Supported |
+| **DevOps Telegram Bot Alerts** | ⚠️ Limited (Weekly Health Check, Single-Error) | ✅ Unlimited alerts & log diagnostics |
+| **DevOps Bot Actions on GCP** | ❌ Blocked | ✅ Auto-remediation & scaling commands |
+
+> [!NOTE]
+> The Headless CLI automatically checks your active plan tier. Compiling or validating a topology containing GCP (`gcloud`) nodes or advanced bot features without a **PRO** plan will return a subscription restriction error.
+
+---
+
 ## 📂 The Generated Deployment Package (`dist/`)
 
 When you run `infradraw compile`, the compiler generates a fully structured environment ready to run on any VPS:
