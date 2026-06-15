@@ -12,6 +12,8 @@
 
 ## Done
 
+- [x] Corrección de condición de carrera en inicialización del canvas para proyectos autenticados con Firebase Auth.
+- [x] Rediseño UX/UI premium del Dashboard de proyectos (`index.html`) con tipografía Inter y estética moderna dark-mode glassmorphic.
 - [x] Migración completa a un modelo SaaS con autenticación Firebase (Google Sign-In), almacenamiento persistente por usuario con Vercel KV, y pasarela de pago Lemon Squeezy (Planes FREE y PRO).
 - [x] Rediseño de interfaz responsiva móvil para el Landing Page de promoción de la plataforma y el dashboard de proyectos.
 - [x] Autenticación local mediante OAuth Device Flow en la CLI (`infradraw login`, `logout`, `whoami`), abriendo automáticamente el navegador para inicio de sesión seguro y persistencia local de credenciales en `~/.infradraw/auth.json`.

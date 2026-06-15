@@ -3,6 +3,8 @@
 ## [Unreleased] - 2026-06-14
 
 ### Added
+- Rediseño UX/UI premium del dashboard de proyectos (`index.html`) con efectos glassmorphic, brillo radial de fondo, tipografía Inter, micro-animaciones y soporte responsivo móvil completo.
+- Solución a condición de carrera en inicialización del canvas (`canvas.html`) agregando un callback `__INFRADRAW_READY` para evitar llamadas a la API sin token de Firebase Auth.
 - Migración completa de InfraDraw a modelo SaaS con autenticación Firebase (Google Sign-In) y persistencia en base de datos aislada por usuario usando Vercel KV.
 - Integración de pasarela de pago Lemon Squeezy a través de webhooks para gestionar suscripciones FREE y PRO ($99 USD).
 - Landing page (`landing.html`) responsiva adaptada a móviles con navegación adaptada, carrusel táctil simulado y modal bottom-sheet.
