@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InfraDraw — Diseña y despliega infraestructura en minutos</title>
+<meta name="description" content="InfraDraw es la herramienta visual de infraestructura que convierte tu arquitectura en código listo para producción. Private Cloud y Google Cloud. Con asistente DevOps en Telegram." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #060b14;
+    --surface: #0d1521;
+    --surface2: #111c2e;
+    --border: #1e2d44;
+    --border2: #253650;
+    --text: #e8f0fe;
+    --muted: #7a92b4;
+    --dim: #3d5278;
+    --blue: #4f8cff;
+    --blue2: #3b6de8;
+    --purple: #7c5af0;
+    --cyan: #22d3ee;
+    --green: #34d399;
+    --grad: linear-gradient(135deg, #4f8cff 0%, #7c5af0 100%);
+    --grad2: linear-gradient(135deg, #22d3ee 0%, #4f8cff 50%, #7c5af0 100%);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* Radial glow background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(79,140,255,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(124,90,240,.10) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── NAV ─────────────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 48px; height: 68px;
+    background: rgba(6,11,20,.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-size: 20px; font-weight: 800; letter-spacing: -.4px;
+    background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .nav-logo span { color: var(--blue); }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .nav-link { color: var(--muted); font-size: 14px; font-weight: 500; text-decoration: none; padding: 6px 12px; border-radius: 8px; transition: color .2s; }
+  .nav-link:hover { color: var(--text); }
+  .btn-login-nav {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); font-size: 14px; font-weight: 600;
+    padding: 8px 18px; border-radius: 10px; cursor: pointer;
+    transition: all .2s; font-family: inherit;
+  }
+  .btn-login-nav:hover { background: var(--surface); border-color: var(--blue); color: var(--blue); }
+
+  /* ── HERO ─────────────────────────────────────────── */
+  .hero {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 120px 24px 80px;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(79,140,255,.1); border: 1px solid rgba(79,140,255,.25);
+    color: var(--blue); font-size: 13px; font-weight: 600;
+    padding: 5px 14px; border-radius: 100px; margin-bottom: 28px;
+    animation: fadeUp .6s ease both;
+  }
+  .hero-badge-dot { width: 6px; height: 6px; background: var(--cyan); border-radius: 50%; animation: pulse 2s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+
+  .hero-title {
+    font-size: clamp(40px, 7vw, 80px);
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: -.04em;
+    max-width: 900px;
+    animation: fadeUp .7s .1s ease both;
+  }
+  .hero-title .grad { background: var(--grad2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero-sub {
+    margin-top: 20px;
+    font-size: clamp(16px, 2.5vw, 20px);
+    color: var(--muted);
+    max-width: 580px;
+    line-height: 1.65;
+    animation: fadeUp .7s .2s ease both;
+  }
+  .hero-ctas {
+    margin-top: 40px;
+    display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+    animation: fadeUp .7s .3s ease both;
+  }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--grad); color: #fff;
+    font-size: 16px; font-weight: 700;
+    padding: 14px 28px; border-radius: 14px;
+    border: none; cursor: pointer; font-family: inherit;
+    box-shadow: 0 8px 32px rgba(79,140,255,.35);
+    transition: all .2s; text-decoration: none;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(79,140,255,.5); }
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: transparent; color: var(--text);
+    font-size: 16px; font-weight: 600;
+    padding: 14px 28px; border-radius: 14px;
+    border: 1px solid var(--border2); cursor: pointer; font-family: inherit;
+    transition: all .2s; text-decoration: none;
+  }
+  .btn-secondary:hover { border-color: var(--blue); color: var(--blue); background: rgba(79,140,255,.06); }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── Canvas mockup visual ─────────────────────────── */
+  .hero-canvas-wrap {
+    margin-top: 60px;
+    width: 100%; max-width: 900px;
+    animation: fadeUp .7s .4s ease both;
+  }
+  .hero-canvas-mock {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 40px 120px rgba(0,0,0,.6), 0 0 0 1px rgba(79,140,255,.08);
+  }
+  .mock-topbar {
+    display: flex; align-items: center; gap: 8px; padding: 14px 20px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+  }
+  .mock-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .mock-dot.r { background: #ff5f57; } .mock-dot.y { background: #febc2e; } .mock-dot.g { background: #28c840; }
+  .mock-title { flex:1; text-align: center; font-size: 13px; color: var(--muted); font-weight: 500; }
+  .mock-body { display: flex; min-height: 320px; }
+  .mock-sidebar { width: 120px; background: var(--surface2); border-right: 1px solid var(--border); padding: 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+  .mock-palette-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; font-size: 11px; color: var(--muted); cursor: pointer; transition: all .2s; }
+  .mock-palette-item:hover { border-color: var(--blue); color: var(--blue); }
+  .mock-canvas-area { flex:1; position: relative; overflow: hidden; background: repeating-linear-gradient(0deg,transparent,transparent 31px,rgba(30,45,68,.4) 31px,rgba(30,45,68,.4) 32px),repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(30,45,68,.4) 31px,rgba(30,45,68,.4) 32px); }
+  .mock-node {
+    position: absolute; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 8px 12px;
+    font-size: 11px; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.3);
+    white-space: nowrap;
+  }
+  .mock-node.selected { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(79,140,255,.25); }
+  .mock-node-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .mock-area {
+    position: absolute; border: 1.5px dashed var(--border2); border-radius: 12px;
+    background: rgba(79,140,255,.04);
+    font-size: 10px; color: var(--dim); padding: 8px 10px;
+    font-weight: 600; letter-spacing: .02em; text-transform: uppercase;
+  }
+  .mock-conn { position: absolute; stroke: var(--dim); fill: none; }
+
+  /* ── SECTION SHARED ─────────────────────────────── */
+  section { position: relative; z-index: 1; padding: 96px 24px; }
+  .section-label { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); margin-bottom: 14px; }
+  .section-title { font-size: clamp(28px, 4vw, 46px); font-weight: 800; letter-spacing: -.03em; line-height: 1.15; max-width: 640px; }
+  .section-sub { margin-top: 16px; font-size: 17px; color: var(--muted); max-width: 520px; line-height: 1.65; }
+
+  /* ── FEATURES ────────────────────────────────────── */
+  #features { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .features-inner { max-width: 1100px; margin: 0 auto; }
+  .features-grid { margin-top: 56px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+  .feature-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px;
+    transition: all .25s;
+  }
+  .feature-card:hover { border-color: var(--blue); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(79,140,255,.1); }
+  .feature-icon { font-size: 28px; margin-bottom: 16px; }
+  .feature-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+  .feature-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+  /* ── BOT SECTION ─────────────────────────────────── */
+  #bot { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+  .bot-phone {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,.5);
+  }
+  .bot-header { background: var(--surface2); padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .bot-avatar { width: 38px; height: 38px; background: var(--grad); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .bot-name { font-size: 15px; font-weight: 700; }
+  .bot-status { font-size: 12px; color: var(--green); }
+  .bot-messages { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 85%; font-size: 13px; padding: 10px 14px; border-radius: 12px; line-height: 1.5; }
+  .msg.bot { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 12px 12px 12px 4px; align-self: flex-start; }
+  .msg.alert { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.25); color: #fca5a5; }
+  .msg-btns { display: flex; gap: 6px; margin-top: 6px; align-self: flex-start; }
+  .msg-btn { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); cursor: pointer; }
+  .msg-btn.primary { background: var(--blue); border-color: var(--blue2); color: #fff; }
+
+  /* ── PRICING ─────────────────────────────────────── */
+  #pricing { background: var(--surface); border-top: 1px solid var(--border); }
+  .pricing-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+  .pricing-grid { margin-top: 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .pricing-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 20px; padding: 36px 32px; text-align: left;
+    position: relative; transition: all .25s;
+  }
+  .pricing-card:hover { transform: translateY(-4px); }
+  .pricing-card.pro { border-color: var(--blue); box-shadow: 0 0 0 1px rgba(79,140,255,.25), 0 20px 60px rgba(79,140,255,.15); }
+  .pricing-badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--grad); color: #fff; font-size: 12px; font-weight: 700; padding: 4px 16px; border-radius: 100px; white-space: nowrap; }
+  .plan-name { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .plan-price { font-size: 48px; font-weight: 900; letter-spacing: -.04em; line-height: 1; }
+  .plan-price .currency { font-size: 24px; vertical-align: top; margin-top: 8px; display: inline-block; }
+  .plan-price .period { font-size: 16px; font-weight: 500; color: var(--muted); }
+  .plan-desc { margin-top: 12px; font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .plan-divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .plan-features { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .plan-feature { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--muted); }
+  .plan-feature .icon { flex-shrink: 0; margin-top: 2px; }
+  .plan-feature .icon.yes { color: var(--green); }
+  .plan-feature .icon.no { color: var(--dim); }
+  .plan-feature strong { color: var(--text); }
+  .btn-plan {
+    display: block; width: 100%; text-align: center;
+    padding: 14px; border-radius: 12px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    font-family: inherit; text-decoration: none; border: none;
+    transition: all .2s;
+  }
+  .btn-plan.free-plan { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+  .btn-plan.free-plan:hover { border-color: var(--blue); color: var(--blue); background: rgba(79,140,255,.06); }
+  .btn-plan.pro-plan { background: var(--grad); color: #fff; box-shadow: 0 6px 24px rgba(79,140,255,.35); }
+  .btn-plan.pro-plan:hover { opacity: .92; transform: translateY(-1px); }
+
+  /* ── FOOTER ─────────────────────────────────────── */
+  footer { position: relative; z-index: 1; padding: 48px 48px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .footer-brand { font-size: 16px; font-weight: 800; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .footer-copy { font-size: 13px; color: var(--dim); }
+
+  /* ── MODAL ──────────────────────────────────────── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 20px; padding: 40px; max-width: 420px; width: 90%;
+    text-align: center; animation: fadeUp .3s ease;
+  }
+  .modal-icon { font-size: 48px; margin-bottom: 16px; }
+  .modal-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .modal-sub { font-size: 15px; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+  .btn-google {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    background: #fff; color: #1f2937;
+    font-size: 16px; font-weight: 600;
+    padding: 14px 24px; border-radius: 12px;
+    border: none; cursor: pointer; width: 100%;
+    font-family: inherit; transition: all .2s;
+    box-shadow: 0 2px 12px rgba(0,0,0,.25);
+  }
+  .btn-google:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+  .btn-google svg { flex-shrink: 0; }
+  .modal-close { margin-top: 16px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  .modal-close:hover { color: var(--text); }
+
+  /* Loading spinner */
+  .loading-overlay { position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s; }
+  .loading-overlay.hidden { opacity:0; pointer-events:none; }
+  .spinner { width:40px;height:40px;border:3px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite; }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media(max-width:768px) {
+    nav { padding: 0 20px; }
+    .nav-link.hide-mobile { display: none; }
+    #bot { grid-template-columns: 1fr; }
+    .pricing-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 12px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo">Infra<span>Draw</span></div>
+  <div class="nav-right">
+    <a href="#features" class="nav-link hide-mobile">Características</a>
+    <a href="#pricing" class="nav-link hide-mobile">Precios</a>
+    <button class="btn-login-nav" id="navLoginBtn">
+      🚀 Iniciar sesión con Google
+    </button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge"><span class="hero-badge-dot"></span> Infraestructura inteligente y visual</div>
+  <h1 class="hero-title">Diseña y despliega<br><span class="grad">infraestructura real</span><br>en minutos</h1>
+  <p class="hero-sub">Arrastra nodos, conecta servicios, y exporta Docker Compose, Terraform y scripts de producción listos para usar. Con un asistente DevOps en Telegram que monitorea tu infra.</p>
+  <div class="hero-ctas">
+    <button class="btn-primary" id="heroCtaBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Empezar gratis
+    </button>
+    <a href="#features" class="btn-secondary">Ver características →</a>
+  </div>
+
+  <!-- Canvas mockup -->
+  <div class="hero-canvas-wrap">
+    <div class="hero-canvas-mock">
+      <div class="mock-topbar">
+        <div class="mock-dot r"></div><div class="mock-dot y"></div><div class="mock-dot g"></div>
+        <div class="mock-title">🛸 InfraDraw — mi-startup.io</div>
+      </div>
+      <div class="mock-body">
+        <div class="mock-sidebar">
+          <div style="font-size:10px;color:var(--dim);font-weight:700;padding:2px 4px;margin-bottom:4px;">NODOS</div>
+          <div class="mock-palette-item">🖥️ VPS</div>
+          <div class="mock-palette-item">🐘 PostgreSQL</div>
+          <div class="mock-palette-item">⚡ Redis</div>
+          <div class="mock-palette-item">🔀 Traefik</div>
+          <div class="mock-palette-item">🌐 Cloudflare</div>
+          <div class="mock-palette-item" style="border-color:var(--blue);color:var(--blue)">🤖 DevOps Bot</div>
+        </div>
+        <div class="mock-canvas-area">
+          <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" viewBox="0 0 700 320" preserveAspectRatio="none">
+            <path d="M 180 100 C 240 100 240 80 300 80" stroke="rgba(79,140,255,.35)" stroke-width="2" fill="none" stroke-dasharray="4"/>
+            <path d="M 180 100 C 240 100 240 200 300 200" stroke="rgba(79,140,255,.25)" stroke-width="2" fill="none" stroke-dasharray="4"/>
+            <path d="M 460 140 C 500 140 520 180 540 180" stroke="rgba(124,90,240,.3)" stroke-width="2" fill="none" stroke-dasharray="4"/>
+          </svg>
+          <div class="mock-area" style="left:30px;top:30px;width:200px;height:240px;">🌐 Red Pública</div>
+          <div class="mock-area" style="left:270px;top:30px;width:200px;height:280px;">🔒 Red Interna</div>
+          <div class="mock-node selected" style="left:58px;top:88px;">
+            <div class="mock-node-dot" style="background:var(--blue)"></div> 🖥️ VPS · cx31
+          </div>
+          <div class="mock-node" style="left:298px;top:58px;">
+            <div class="mock-node-dot" style="background:#22d3ee"></div> 🔀 Traefik
+          </div>
+          <div class="mock-node" style="left:298px;top:168px;">
+            <div class="mock-node-dot" style="background:var(--green)"></div> 🐘 PostgreSQL
+          </div>
+          <div class="mock-node" style="left:520px;top:100px;">
+            <div class="mock-node-dot" style="background:var(--purple)"></div> 🤖 DevOps Bot
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<section id="features">
+  <div class="features-inner">
+    <div class="section-label">Características</div>
+    <h2 class="section-title">Todo lo que necesitas para producción</h2>
+    <p class="section-sub">De un diagrama visual a un stack completo de producción en segundos, no en días.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🎨</div>
+        <div class="feature-title">Canvas drag-and-drop</div>
+        <div class="feature-desc">Diseña tu arquitectura visualmente. Arrastra nodos, conecta servicios, organiza en redes. Sin código.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📦</div>
+        <div class="feature-title">Export completo a IaC</div>
+        <div class="feature-desc">Genera Docker Compose, Terraform, scripts de setup, Traefik, backups automáticos y Makefile en un ZIP.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">☁️</div>
+        <div class="feature-title">Private Cloud + GCP</div>
+        <div class="feature-desc">Soporte para Hetzner, DigitalOcean, Vultr y Google Cloud Platform con Terraform nativo para cada proveedor.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <div class="feature-title">Asistente DevOps IA</div>
+        <div class="feature-desc">Bot de Telegram que monitorea tu infra 24/7. Si algo falla, Gemini AI diagnostica el error y sugiere la solución.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💻</div>
+        <div class="feature-title">CLI Agentic</div>
+        <div class="feature-desc">CLI con salidas JSON para integrar InfraDraw en tus pipelines de CI/CD o flujos de IA automatizados.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">Seguridad por defecto</div>
+        <div class="feature-desc">El validador de arquitectura detecta riesgos de seguridad y cuellos de botella de RAM en tiempo real al diseñar.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DevOps Bot section -->
+<section>
+  <div id="bot">
+    <div class="bot-phone">
+      <div class="bot-header">
+        <div class="bot-avatar">🤖</div>
+        <div>
+          <div class="bot-name">InfraDraw DevOps Bot</div>
+          <div class="bot-status">● En línea</div>
+        </div>
+      </div>
+      <div class="bot-messages">
+        <div class="msg bot">🟢 <strong>Heartbeat Horario:</strong> Todos los chequeos de salud reportan "Todo OK". Recursos normales.</div>
+        <div class="msg bot alert">
+          ⚠️ <strong>ALERTA:</strong> El contenedor <code>api-backend</code> está caído.<br><br>
+          🤖 <strong>Diagnóstico (Gemini AI):</strong> El proceso crasheó por falta de memoria (OOM). Se recomienda aumentar los límites de RAM del contenedor o escalar el servidor.
+        </div>
+        <div class="msg-btns">
+          <button class="msg-btn primary">👍 Aplicar Solución</button>
+          <button class="msg-btn">👎 Yo lo soluciono</button>
+          <button class="msg-btn">💡 Alternativa</button>
+        </div>
+        <div class="msg bot">✅ Instancia escalada a <strong>e2-standard-2</strong> en GCP correctamente.</div>
+      </div>
+    </div>
+    <div>
+      <div class="section-label">DevOps Bot en Telegram</div>
+      <h2 class="section-title">Tu infraestructura, vigilada 24/7</h2>
+      <p class="section-sub">El bot monitorea CPU, RAM, disco y contenedores. Si algo falla, Gemini AI analiza los logs y te envía un diagnóstico con propuesta de solución directamente a Telegram. Tú decides si aplicarla o no.</p>
+      <br />
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+        <div class="plan-feature"><span class="icon yes">✓</span> Chequeos de salud configurables (cada 5 min)</div>
+        <div class="plan-feature"><span class="icon yes">✓</span> Diagnóstico con Gemini AI de logs de contenedores</div>
+        <div class="plan-feature"><span class="icon yes">✓</span> Heartbeat horario de "Todo OK"</div>
+        <div class="plan-feature"><span class="icon yes">✓</span> Auto-escalado de VMs en GCP con un botón</div>
+        <div class="plan-feature"><span class="icon yes">✓</span> Chat directo para consultas DevOps</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing">
+  <div class="pricing-inner">
+    <div class="section-label">Precios</div>
+    <h2 class="section-title" style="margin:0 auto;text-align:center;">Comienza gratis, escala cuando lo necesites</h2>
+    <p class="section-sub" style="margin:16px auto 0;text-align:center;">Sin tarjeta de crédito para empezar. Cancela en cualquier momento.</p>
+    <div class="pricing-grid">
+      <!-- FREE -->
+      <div class="pricing-card">
+        <div class="plan-name">Free</div>
+        <div class="plan-price"><span class="currency">$</span>0<span class="period">/mes</span></div>
+        <div class="plan-desc">Perfecto para proyectos personales y explorar InfraDraw.</div>
+        <hr class="plan-divider">
+        <div class="plan-features">
+          <div class="plan-feature"><span class="icon yes">✓</span> <span>Hasta <strong>3 proyectos</strong></span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span><strong>Private Cloud</strong> (Hetzner, DO, Vultr, etc.)</span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span>Export completo a Docker Compose + Terraform</span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span>DevOps Bot: <strong>check semanal</strong> + alerta de errores</span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span>Tu propia API key de Gemini</span></div>
+          <div class="plan-feature"><span class="icon no">✗</span> <span style="opacity:.5">Google Cloud (GCP)</span></div>
+          <div class="plan-feature"><span class="icon no">✗</span> <span style="opacity:.5">Auto-escalado automático</span></div>
+          <div class="plan-feature"><span class="icon no">✗</span> <span style="opacity:.5">Chequeos configurables (horario/diario)</span></div>
+        </div>
+        <button class="btn-plan free-plan" id="pricingFreeBtn">Empezar gratis →</button>
+      </div>
+      <!-- PRO -->
+      <div class="pricing-card pro">
+        <div class="pricing-badge">⭐ MÁS POPULAR</div>
+        <div class="plan-name" style="color:var(--blue)">PRO</div>
+        <div class="plan-price"><span class="currency" style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">$</span><span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">99</span><span class="period">/mes</span></div>
+        <div class="plan-desc">Para equipos y productos en producción que necesitan el control total.</div>
+        <hr class="plan-divider">
+        <div class="plan-features">
+          <div class="plan-feature"><span class="icon yes">✓</span> <span><strong>Proyectos ilimitados</strong></span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span>Private Cloud completo</span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span>Export completo a Docker Compose + Terraform</span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span><strong>Google Cloud Platform (GCP)</strong> nativo</span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span>DevOps Bot: chequeos <strong>configurables</strong> (horario/diario/semanal)</span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span><strong>Auto-escalado automático</strong> de VMs en GCP</span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span>API key de Gemini incluida en el sistema</span></div>
+          <div class="plan-feature"><span class="icon yes">✓</span> <span>Soporte prioritario</span></div>
+        </div>
+        <button class="btn-plan pro-plan" id="pricingProBtn">Obtener PRO →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-brand">InfraDraw</div>
+  <div class="footer-copy">© 2025 InfraDraw. Construido con ❤️ para desarrolladores indie.</div>
+</footer>
+
+<!-- Login Modal -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <div class="modal-icon">🛸</div>
+    <div class="modal-title">Bienvenido a InfraDraw</div>
+    <div class="modal-sub">Inicia sesión con tu cuenta de Google para empezar a diseñar infraestructura en minutos.</div>
+    <button class="btn-google" id="googleSignInBtn">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Continuar con Google
+    </button>
+    <div class="modal-close" id="modalClose">Cancelar</div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCzla1NHcQ4VOi7iOoW3HEPyocLJpP5OSE",
+    authDomain: "infradraw-f65fa.firebaseapp.com",
+    projectId: "infradraw-f65fa",
+    storageBucket: "infradraw-f65fa.firebasestorage.app",
+    messagingSenderId: "528220544849",
+    appId: "1:528220544849:web:588de9c7231d08ba2bbd70",
+    measurementId: "G-D4LC3Q1RPL"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  const loadingOverlay = document.getElementById('loadingOverlay');
+
+  // If already logged in → redirect to dashboard
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      window.location.href = '/app';
+    } else {
+      loadingOverlay.classList.add('hidden');
+      setTimeout(() => loadingOverlay.style.display = 'none', 400);
+    }
+  });
+
+  async function handleLogin() {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
+      // Sync user to KV
+      await fetch('/api/auth-sync', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
+      });
+      window.location.href = '/app';
+    } catch (err) {
+      console.error('Login error:', err);
+      alert('Error al iniciar sesión: ' + err.message);
+    }
+  }
+
+  document.getElementById('googleSignInBtn').addEventListener('click', handleLogin);
+  document.getElementById('navLoginBtn').addEventListener('click', () => {
+    document.getElementById('loginModal').classList.add('open');
+  });
+  document.getElementById('heroCtaBtn').addEventListener('click', () => {
+    document.getElementById('loginModal').classList.add('open');
+  });
+  document.getElementById('pricingFreeBtn').addEventListener('click', () => {
+    document.getElementById('loginModal').classList.add('open');
+  });
+  document.getElementById('pricingProBtn').addEventListener('click', () => {
+    document.getElementById('loginModal').classList.add('open');
+  });
+  document.getElementById('modalClose').addEventListener('click', () => {
+    document.getElementById('loginModal').classList.remove('open');
+  });
+  document.getElementById('loginModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('loginModal')) {
+      document.getElementById('loginModal').classList.remove('open');
+    }
+  });
+</script>
+</body>
+</html>

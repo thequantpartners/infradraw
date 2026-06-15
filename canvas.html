@@ -7,6 +7,34 @@
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  const firebaseConfig = {
+    apiKey: "AIzaSyCzla1NHcQ4VOi7iOoW3HEPyocLJpP5OSE",
+    authDomain: "infradraw-f65fa.firebaseapp.com",
+    projectId: "infradraw-f65fa",
+    storageBucket: "infradraw-f65fa.firebasestorage.app",
+    messagingSenderId: "528220544849",
+    appId: "1:528220544849:web:588de9c7231d08ba2bbd70"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = '/landing.html'; return; }
+    const idToken = await user.getIdToken();
+    window.__INFRADRAW_TOKEN = idToken;
+    setInterval(async () => { window.__INFRADRAW_TOKEN = await user.getIdToken(true); }, 50 * 60 * 1000);
+    try {
+      const r = await fetch('/api/auth-sync', { method: 'POST', headers: { 'Authorization': 'Bearer ' + idToken } });
+      const profile = await r.json();
+      window.__INFRADRAW_PLAN = profile.plan || 'free';
+    } catch(e) { window.__INFRADRAW_PLAN = 'free'; }
+    document.getElementById('auth-canvas-loading').style.display = 'none';
+    document.getElementById('root').style.display = '';
+    window.__INFRADRAW_SIGNOUT = () => signOut(auth).then(() => window.location.href = '/landing.html');
+  });
+</script>
 <style>
   :root {
     --bg: #0d1117; --panel: #161b22; --panel-2: #1c2230;
@@ -129,7 +157,8 @@
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="auth-canvas-loading" style="position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="width:36px;height:36px;border:3px solid #1c2230;border-top-color:#4f8cff;border-radius:50%;animation:spin .8s linear infinite"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>
+<div id="root" style="display:none"></div>
 <script>
 (function () {
 "use strict";
@@ -2183,11 +2212,12 @@ function App() {
   function undo(){var h2=historyRef.current;if(!h2.length)return;var snap=h2[h2.length-1];historyRef.current=h2.slice(0,-1);setUndoCount(h2.length-1);setNodes(snap.nodes);setAreas(snap.areas);setNotes(snap.notes);setConns(snap.conns);clearSelection();}
 
   // ---- Project management ----
+  function authHeaders(){return{'Content-Type':'application/json','Authorization':'Bearer '+(window.__INFRADRAW_TOKEN||'')};}
   function doSave(){
     var id=projectIdRef.current; if(!id) return;
     setSaveStatus('saving');
     fetch('/api/project?id='+id,{
-      method:'PUT', headers:{'Content-Type':'application/json'},
+      method:'PUT', headers:authHeaders(),
       body:JSON.stringify({name:projectNameRef.current,canvas:{nodes:toRelativeNodes(nodesRef.current,areasRef.current),areas:areasRef.current,notes:notesRef.current,conns:connsRef.current,transform:transformRef.current,cloudMode:cloudModeRef.current}})
     }).then(function(r){return r.json();}).then(function(){setSaveStatus('saved');}).catch(function(){setSaveStatus('error');});
   }
@@ -2208,7 +2238,7 @@ function App() {
     var params=new URLSearchParams(window.location.search), id=params.get('id');
     if(!id){window.location.href='/';return;}
     setProjectId(id); projectIdRef.current=id;
-    fetch('/api/project?id='+id).then(function(r){return r.json();}).then(function(data){
+    fetch('/api/project?id='+id,{headers:authHeaders()}).then(function(r){return r.json();}).then(function(data){
       if(data.error){alert('Proyecto no encontrado');window.location.href='/';return;}
       if(data.canvas){
         var hasContent=(data.canvas.nodes&&data.canvas.nodes.length>0)||
@@ -2970,10 +3000,18 @@ function App() {
           key:'cloud-sel',
           className:'cloud-mode-select',
           value:cloudMode,
-          onChange:function(e){setCloudMode(e.target.value);}
+          title: (window.__INFRADRAW_PLAN||'free') === 'pro' ? '' : 'Google Cloud requiere plan PRO',
+          onChange:function(e){
+            var newMode = e.target.value;
+            if(newMode === 'gcp' && (window.__INFRADRAW_PLAN||'free') !== 'pro'){
+              alert('⭐ Google Cloud (GCP) es una función exclusiva del plan PRO ($99/mes).\n\nActualiza en infradraw.io/#pricing para acceder a:\n• Terraform nativo para GCP\n• Auto-escalado automático de VMs\n• Proyectos ilimitados');
+              return;
+            }
+            setCloudMode(newMode);
+          }
         },[
           h('option',{key:'p',value:'private'},'🌐 Private Cloud'),
-          h('option',{key:'g',value:'gcp'},'☁️ Google Cloud (GCP)')
+          h('option',{key:'g',value:'gcp'},'⭐ Google Cloud (GCP) ' + ((window.__INFRADRAW_PLAN||'free') === 'pro' ? '' : '— PRO'))
         ])
       ])
     ]),
