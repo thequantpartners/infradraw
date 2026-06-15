@@ -54,3 +54,28 @@
 *   **Contexto:** Se necesita facilitar al usuario el diseño de topologías enfocadas a Google Cloud Platform (GCP) mostrando nombres, iconos y herramientas nativas de este proveedor sin distorsionar el motor original de Docker-first ni perder soporte de Cloudflare.
 *   **Decisión:** Implementar un selector dinámico en el canvas React que modifica la paleta de componentes para mostrar las equivalencias nativas de GCP (Compute Engine, Cloud SQL, Cloud Storage). Al usar este modo, los VPS/Compute Engine quedan automáticamente bloqueados con el proveedor `gcloud` en su panel de configuración. Adicionalmente, el compilador genera Terraform nativo para buckets de Google Cloud Storage (`google_storage_bucket`) si se añade almacenamiento.
 
+## 10. Integración de Autenticación de Firebase (Google Sign-In)
+*   **Fecha:** 2026-06-14
+*   **Estado:** Aprobado
+*   **Contexto:** Necesitamos un método seguro y rápido para autenticar usuarios en la landing page y en la SPA sin gestionar contraseñas ni hashes propios.
+*   **Decisión:** Integrar Firebase Auth SDK (v10.12) con el proveedor de Google tanto para la web como para el inicio de sesión del CLI.
+
+## 11. Base de Datos Aislada por Usuario en Vercel KV (Redis)
+*   **Fecha:** 2026-06-14
+*   **Estado:** Aprobado
+*   **Contexto:** Para soportar un esquema multi-inquilino (SaaS), los proyectos guardados deben estar asociados a cada usuario específico y aislados del resto.
+*   **Decisión:** Almacenar los diagramas y configuraciones en Vercel KV utilizando claves con el prefijo `user:{uid}:projects` y `user:{uid}:project:{id}`, verificando siempre el token de Firebase en cada petición.
+
+## 12. Pasarela de Pagos (Lemon Squeezy) y Restricción de Planes
+*   **Fecha:** 2026-06-14
+*   **Estado:** Aprobado
+*   **Contexto:** Se quiere comercializar InfraDraw con un plan FREE (nubes privadas) y un plan PRO de $99 USD (con soporte GCP y alertas avanzadas del bot DevOps en Telegram).
+*   **Decisión:** Conectar un webhook serverless a Lemon Squeezy para escuchar actualizaciones de suscripciones. En el compilador web y la CLI se restringe la generación de IaC de GCP y opciones avanzadas si el plan del usuario no es PRO.
+
+## 13. Autenticación Local de CLI mediante Servidor Temporal (OAuth Device Flow)
+*   **Fecha:** 2026-06-14
+*   **Estado:** Aprobado
+*   **Contexto:** El CLI debe autenticarse contra la base de datos de InfraDraw de forma segura sin pedirle al usuario que escriba manualmente sus tokens Firebase.
+*   **Decisión:** Implementar un flujo donde `infradraw login` inicia un servidor HTTP local en un puerto aleatorio alto, abre el navegador apuntando a `/cli-auth?port={port}`, y tras el login con Google de Firebase, el navegador envía los tokens vía POST localmente al CLI. Las credenciales se guardan en `~/.infradraw/auth.json`.
+
+

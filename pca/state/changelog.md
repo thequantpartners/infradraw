@@ -3,6 +3,11 @@
 ## [Unreleased] - 2026-06-14
 
 ### Added
+- Migración completa de InfraDraw a modelo SaaS con autenticación Firebase (Google Sign-In) y persistencia en base de datos aislada por usuario usando Vercel KV.
+- Integración de pasarela de pago Lemon Squeezy a través de webhooks para gestionar suscripciones FREE y PRO ($99 USD).
+- Landing page (`landing.html`) responsiva adaptada a móviles con navegación adaptada, carrusel táctil simulado y modal bottom-sheet.
+- Autenticación OAuth Device Flow en la CLI (`infradraw login`, `logout`, `whoami`) utilizando un servidor local HTTP temporal para recibir los tokens desde el navegador.
+- Validación y restricción de planes en compilador y CLI, bloqueando el uso de Google Cloud Platform (GCP) y limitando alertas del bot DevOps de Telegram si el usuario está en el plan FREE.
 - Evolución del CLI a **Agentic CLI** en `cli/bin/infradraw.js` mediante la adición de flags `--json` para los comandos `compile` y `validate`.
 - Creación de topologías de arquitectura de manera no interactiva usando `infradraw create --non-interactive` y flags de configuración.
 - Nuevo comando `infradraw schema` para imprimir las plataformas, planes, regiones, frameworks y bases de datos soportados en formato JSON.

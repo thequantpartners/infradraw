@@ -12,6 +12,10 @@
 
 ## Done
 
+- [x] Migración completa a un modelo SaaS con autenticación Firebase (Google Sign-In), almacenamiento persistente por usuario con Vercel KV, y pasarela de pago Lemon Squeezy (Planes FREE y PRO).
+- [x] Rediseño de interfaz responsiva móvil para el Landing Page de promoción de la plataforma y el dashboard de proyectos.
+- [x] Autenticación local mediante OAuth Device Flow en la CLI (`infradraw login`, `logout`, `whoami`), abriendo automáticamente el navegador para inicio de sesión seguro y persistencia local de credenciales en `~/.infradraw/auth.json`.
+- [x] Validación y restricción en tiempo de ejecución de planes (GCP bloqueado para plan FREE, bot de Telegram con limitaciones en alertas) tanto en la web como en la CLI.
 - [x] Evolucionar el CLI de InfraDraw a una Agentic CLI agregando soporte para salidas JSON, comandos de autodescubrimiento (schema) y creación no interactiva.
 - [x] Implementar soporte nativo para importar topologías de red desde archivos JSON con algoritmo de Auto-Layout bidireccional de manera visual.
 - [x] Canvas interactivo funcional con soporte de arrastre de nodos, zoom y redimensionamiento de áreas.
