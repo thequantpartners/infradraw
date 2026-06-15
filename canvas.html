@@ -33,6 +33,7 @@
     document.getElementById('auth-canvas-loading').style.display = 'none';
     document.getElementById('root').style.display = '';
     window.__INFRADRAW_SIGNOUT = () => signOut(auth).then(() => window.location.href = '/landing.html');
+    window.__INFRADRAW_READY && window.__INFRADRAW_READY();
   });
 </script>
 <style>
@@ -2238,26 +2239,35 @@ function App() {
     var params=new URLSearchParams(window.location.search), id=params.get('id');
     if(!id){window.location.href='/';return;}
     setProjectId(id); projectIdRef.current=id;
-    fetch('/api/project?id='+id,{headers:authHeaders()}).then(function(r){return r.json();}).then(function(data){
-      if(data.error){alert('Proyecto no encontrado');window.location.href='/';return;}
-      if(data.canvas){
-        var hasContent=(data.canvas.nodes&&data.canvas.nodes.length>0)||
-                       (data.canvas.areas&&data.canvas.areas.length>0)||
-                       (data.canvas.notes&&data.canvas.notes.length>0)||
-                       (data.canvas.conns&&data.canvas.conns.length>0);
-        if(hasContent){
-          var mig=migrateNodes(data.canvas);
-          if(mig.migrated.length||mig.removed.length)setMigrationInfo({migrated:mig.migrated,removed:mig.removed});
-          var s=sanitizeCanvas(mig.data);
-          setNodes(s.nodes);setAreas(s.areas);setNotes(s.notes);setConns(s.conns);
+
+    function fetchProject() {
+      fetch('/api/project?id='+id,{headers:authHeaders()}).then(function(r){return r.json();}).then(function(data){
+        if(data.error){alert('Proyecto no encontrado');window.location.href='/';return;}
+        if(data.canvas){
+          var hasContent=(data.canvas.nodes&&data.canvas.nodes.length>0)||
+                         (data.canvas.areas&&data.canvas.areas.length>0)||
+                         (data.canvas.notes&&data.canvas.notes.length>0)||
+                         (data.canvas.conns&&data.canvas.conns.length>0);
+          if(hasContent){
+            var mig=migrateNodes(data.canvas);
+            if(mig.migrated.length||mig.removed.length)setMigrationInfo({migrated:mig.migrated,removed:mig.removed});
+            var s=sanitizeCanvas(mig.data);
+            setNodes(s.nodes);setAreas(s.areas);setNotes(s.notes);setConns(s.conns);
+          }
+          if(data.canvas.transform)setTransform(data.canvas.transform);
+          if(data.canvas.cloudMode)setCloudMode(data.canvas.cloudMode);
         }
-        if(data.canvas.transform)setTransform(data.canvas.transform);
-        if(data.canvas.cloudMode)setCloudMode(data.canvas.cloudMode);
-      }
-      setProjectName(data.name||'Sin nombre');
-      setLoading(false);
-      setTimeout(function(){initialLoadRef.current=true;},400);
-    }).catch(function(){setLoading(false);initialLoadRef.current=true;});
+        setProjectName(data.name||'Sin nombre');
+        setLoading(false);
+        setTimeout(function(){initialLoadRef.current=true;},400);
+      }).catch(function(){setLoading(false);initialLoadRef.current=true;});
+    }
+
+    if (window.__INFRADRAW_TOKEN) {
+      fetchProject();
+    } else {
+      window.__INFRADRAW_READY = fetchProject;
+    }
   },[]);
 
   // Auto-save on canvas changes
