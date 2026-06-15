@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InfraDraw CLI — Autorización</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #060b14; --surface: #0d1521; --surface2: #111c2e;
+    --border: #1e2d44; --text: #e8f0fe; --muted: #7a92b4;
+    --blue: #4f8cff; --green: #34d399; --red: #f87171;
+    --grad: linear-gradient(135deg, #4f8cff 0%, #7c5af0 100%);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 30% 20%, rgba(79,140,255,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 80% 80%, rgba(124,90,240,.10) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 24px; padding: 48px 40px; max-width: 440px; width: 100%;
+    text-align: center; position: relative; z-index: 1;
+    box-shadow: 0 32px 80px rgba(0,0,0,.5);
+  }
+  .logo {
+    font-size: 22px; font-weight: 800; letter-spacing: -.4px;
+    background: var(--grad); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 32px;
+  }
+  .icon { font-size: 52px; margin-bottom: 20px; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+  .sub { font-size: 15px; color: var(--muted); line-height: 1.65; margin-bottom: 32px; }
+  .cli-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 16px; font-size: 13px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    color: var(--blue); margin-bottom: 32px;
+  }
+  .btn-google {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    background: #fff; color: #1f2937; font-size: 16px; font-weight: 600;
+    padding: 14px 24px; border-radius: 12px; border: none; cursor: pointer;
+    width: 100%; font-family: inherit; transition: all .2s;
+    box-shadow: 0 2px 12px rgba(0,0,0,.25);
+  }
+  .btn-google:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+  .btn-google:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+  /* States */
+  .state { display: none; }
+  .state.active { display: block; }
+
+  /* Loading */
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 20px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Success */
+  .success-icon { font-size: 52px; margin-bottom: 16px; animation: popIn .4s cubic-bezier(.175,.885,.32,1.275) both; }
+  @keyframes popIn { from{opacity:0;transform:scale(.5)} to{opacity:1;transform:scale(1)} }
+  .success-title { font-size: 22px; font-weight: 800; color: var(--green); margin-bottom: 8px; }
+  .success-sub { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .user-chip {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 100px; padding: 6px 16px 6px 6px;
+    margin: 20px 0;
+  }
+  .user-avatar { width: 28px; height: 28px; border-radius: 50%; }
+  .user-email { font-size: 13px; font-weight: 600; color: var(--text); }
+  .plan-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 100px; padding: 4px 12px; font-size: 12px; font-weight: 700;
+    margin-top: 4px;
+  }
+  .plan-chip.free { background: rgba(122,146,180,.12); border: 1px solid rgba(122,146,180,.2); color: var(--muted); }
+  .plan-chip.pro  { background: rgba(79,140,255,.15);  border: 1px solid rgba(79,140,255,.3);  color: var(--blue); }
+  .close-hint { margin-top: 24px; font-size: 12px; color: var(--muted); opacity: .7; }
+
+  /* Error */
+  .error-title { font-size: 20px; font-weight: 700; color: var(--red); margin-bottom: 8px; }
+  .error-msg { font-size: 14px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  .btn-retry { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-family: inherit; }
+
+  @media (max-width: 480px) {
+    .card { padding: 36px 24px; border-radius: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">InfraDraw</div>
+
+  <!-- State: Login prompt -->
+  <div class="state active" id="stateLogin">
+    <div class="icon">🔐</div>
+    <h1>Autorizar InfraDraw CLI</h1>
+    <p class="sub">Inicia sesión con Google para autenticar tu sesión en la línea de comandos. Una vez autorizado, podrás cerrar esta ventana.</p>
+    <div class="cli-tag">
+      <span>⌘</span> infradraw login
+    </div>
+    <button class="btn-google" id="btnGoogle">
+      <svg width="20" height="20" viewBox="0 0 24 24">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Continuar con Google
+    </button>
+  </div>
+
+  <!-- State: Loading -->
+  <div class="state" id="stateLoading">
+    <div class="spinner"></div>
+    <h1 style="margin-bottom:8px">Autenticando…</h1>
+    <p class="sub" style="margin-bottom:0">Enviando credenciales al CLI</p>
+  </div>
+
+  <!-- State: Success -->
+  <div class="state" id="stateSuccess">
+    <div class="success-icon">✅</div>
+    <div class="success-title">¡Sesión iniciada!</div>
+    <div id="userChip" class="user-chip">
+      <img class="user-avatar" id="userAvatar" src="" alt="" />
+      <span class="user-email" id="userEmail"></span>
+    </div>
+    <div id="planChip" class="plan-chip free"></div>
+    <p class="success-sub">Tu CLI está autenticada y lista para usar.</p>
+    <p class="close-hint">Puedes cerrar esta ventana 🎉</p>
+  </div>
+
+  <!-- State: Error -->
+  <div class="state" id="stateError">
+    <div class="icon">❌</div>
+    <div class="error-title">Error de autenticación</div>
+    <p class="error-msg" id="errorMsg">No se pudo completar la autenticación.</p>
+    <button class="btn-retry" id="btnRetry">Intentar de nuevo</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp }       from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCzla1NHcQ4VOi7iOoW3HEPyocLJpP5OSE",
+    authDomain: "infradraw-f65fa.firebaseapp.com",
+    projectId: "infradraw-f65fa",
+    storageBucket: "infradraw-f65fa.firebasestorage.app",
+    messagingSenderId: "528220544849",
+    appId: "1:528220544849:web:588de9c7231d08ba2bbd70"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  // Get the callback port from URL param (e.g., /cli-auth?port=49152)
+  const params = new URLSearchParams(window.location.search);
+  const port   = parseInt(params.get('port') || '0', 10);
+
+  function setState(id) {
+    document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showError(msg) {
+    document.getElementById('errorMsg').textContent = msg;
+    setState('stateError');
+  }
+
+  async function doLogin() {
+    document.getElementById('btnGoogle').disabled = true;
+    try {
+      const result   = await signInWithPopup(auth, provider);
+      const user     = result.user;
+      const idToken  = await user.getIdToken();
+      const refreshToken = user.refreshToken;
+
+      setState('stateLoading');
+
+      // Sync user to KV and get plan
+      let plan = 'free';
+      try {
+        const syncRes = await fetch('/api/auth-sync', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + idToken }
+        });
+        const profile = await syncRes.json();
+        plan = profile.plan || 'free';
+      } catch (_) {}
+
+      // Send credentials to CLI local server
+      if (!port || port < 1024) {
+        showError('Puerto inválido. Ejecuta "infradraw login" de nuevo desde la terminal.');
+        return;
+      }
+
+      const payload = {
+        idToken,
+        refreshToken,
+        uid:         user.uid,
+        email:       user.email,
+        displayName: user.displayName || user.email,
+        photoURL:    user.photoURL || '',
+        plan,
+        issuedAt:    Date.now()
+      };
+
+      try {
+        await fetch(`http://localhost:${port}/callback`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload),
+          mode:    'no-cors'  // CLI server doesn't need CORS, just deliver the payload
+        });
+      } catch (_) {
+        // no-cors fetch throws on cross-origin success, that's ok
+      }
+
+      // Show success UI
+      document.getElementById('userAvatar').src = user.photoURL || '';
+      document.getElementById('userEmail').textContent  = user.email;
+      const planChip = document.getElementById('planChip');
+      planChip.className = 'plan-chip ' + plan;
+      planChip.textContent = plan === 'pro' ? '⭐ Plan PRO' : 'Plan FREE';
+      setState('stateSuccess');
+
+      // Auto-close after 3s
+      setTimeout(() => window.close(), 3000);
+    } catch (err) {
+      document.getElementById('btnGoogle').disabled = false;
+      showError('Error: ' + (err.message || err.code || 'desconocido'));
+    }
+  }
+
+  document.getElementById('btnGoogle').addEventListener('click', doLogin);
+  document.getElementById('btnRetry').addEventListener('click', () => {
+    setState('stateLogin');
+    document.getElementById('btnGoogle').disabled = false;
+  });
+</script>
+</body>
+</html>

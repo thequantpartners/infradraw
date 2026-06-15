@@ -1,11 +1,12 @@
 {
   "rewrites": [
-    { "source": "/",        "destination": "/landing.html" },
-    { "source": "/canvas",  "destination": "/canvas.html" },
-    { "source": "/app",     "destination": "/index.html" },
-    { "source": "/api/auth-sync", "destination": "/api/auth-sync.js" },
-    { "source": "/api/user",      "destination": "/api/user.js" },
-    { "source": "/api/webhooks/lemonsqueezy", "destination": "/api/webhooks/lemonsqueezy.js" }
+    { "source": "/",                              "destination": "/landing.html"    },
+    { "source": "/canvas",                        "destination": "/canvas.html"     },
+    { "source": "/app",                           "destination": "/index.html"      },
+    { "source": "/cli-auth",                      "destination": "/cli-auth.html"   },
+    { "source": "/api/auth-sync",                 "destination": "/api/auth-sync.js" },
+    { "source": "/api/user",                      "destination": "/api/user.js"     },
+    { "source": "/api/webhooks/lemonsqueezy",     "destination": "/api/webhooks/lemonsqueezy.js" }
   ],
   "headers": [
     {

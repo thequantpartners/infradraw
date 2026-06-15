@@ -6,6 +6,9 @@ import path from 'path';
 import chalk from 'chalk';
 import readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
+import http from 'http';
+import { exec } from 'child_process';
+import os from 'os';
 import {
   detectScenario,
   getPlanRAM,
@@ -27,6 +30,85 @@ import {
 } from '../src/compiler.js';
 
 const program = new Command();
+
+// ───────────────────────────────────────────────────
+// AUTH HELPERS
+// ───────────────────────────────────────────────────
+const AUTH_DIR  = path.join(os.homedir(), '.infradraw');
+const AUTH_FILE = path.join(AUTH_DIR, 'auth.json');
+const FIREBASE_API_KEY  = 'AIzaSyCzla1NHcQ4VOi7iOoW3HEPyocLJpP5OSE';
+const INFRADRAW_BASE_URL = 'https://infradraw-pied.vercel.app';
+// Token is valid 1 hour; refresh if older than 50 minutes
+const TOKEN_TTL_MS = 50 * 60 * 1000;
+
+async function readAuth() {
+  try {
+    return await fs.readJson(AUTH_FILE);
+  } catch (_) {
+    return null;
+  }
+}
+
+async function saveAuth(data) {
+  await fs.ensureDir(AUTH_DIR);
+  await fs.writeJson(AUTH_FILE, data, { spaces: 2 });
+}
+
+async function refreshIdToken(refreshToken) {
+  const res = await fetch(
+    `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`
+    }
+  );
+  const data = await res.json();
+  if (!data.id_token) throw new Error('Token refresh failed: ' + JSON.stringify(data));
+  return { idToken: data.id_token, refreshToken: data.refresh_token };
+}
+
+/**
+ * Returns a valid idToken, refreshing if needed.
+ * Exits with an error if not logged in.
+ */
+async function requireAuth() {
+  const auth = await readAuth();
+  if (!auth || !auth.idToken || !auth.refreshToken) {
+    console.error(chalk.red('\n✕ No has iniciado sesión.'));
+    console.error(chalk.yellow('  Ejecuta: infradraw login\n'));
+    process.exit(1);
+  }
+
+  const age = Date.now() - (auth.issuedAt || 0);
+  if (age > TOKEN_TTL_MS) {
+    try {
+      const refreshed = await refreshIdToken(auth.refreshToken);
+      auth.idToken    = refreshed.idToken;
+      auth.refreshToken = refreshed.refreshToken;
+      auth.issuedAt   = Date.now();
+      await saveAuth(auth);
+    } catch (err) {
+      console.error(chalk.red('\n✕ La sesión expiró. Por favor vuelve a iniciar sesión.'));
+      console.error(chalk.yellow('  Ejecuta: infradraw login\n'));
+      process.exit(1);
+    }
+  }
+
+  return auth;
+}
+
+function openBrowser(url) {
+  const platform = process.platform;
+  let cmd;
+  if (platform === 'win32')  cmd = `start "" "${url}"`;
+  else if (platform === 'darwin') cmd = `open "${url}"`;
+  else cmd = `xdg-open "${url}"`;
+  exec(cmd, (err) => {
+    if (err) console.warn(chalk.yellow('  No se pudo abrir el navegador automáticamente.'));
+  });
+}
+
 
 function validateTopology(data) {
   const errors = [];
@@ -120,6 +202,22 @@ program
   .option('--json', 'Salida en formato JSON legible por máquinas')
   .action(async (file, outDir, options) => {
     const isJson = !!options.json;
+
+    // Enforce auth & sync plan
+    const auth = await requireAuth();
+    let plan = auth.plan || 'free';
+    try {
+      const res = await fetch(`${INFRADRAW_BASE_URL}/api/user`, {
+        headers: { 'Authorization': 'Bearer ' + auth.idToken }
+      });
+      if (res.ok) {
+        const profile = await res.json();
+        plan = profile.plan || plan;
+        auth.plan = plan;
+        await saveAuth(auth);
+      }
+    } catch (_) {}
+
     const generatedFiles = [];
     try {
       const fullPath = path.resolve(process.cwd(), file);
@@ -151,6 +249,17 @@ program
       const { scenario, vpsNodes } = det;
       const vpsConfig = (vpsNodes[0] && vpsNodes[0].config) || {};
       const provider = vpsConfig.provider || 'hetzner';
+
+      if (provider === 'gcloud' && plan !== 'pro') {
+        if (isJson) {
+          console.log(JSON.stringify({ status: 'error', error: 'Google Cloud (GCP) es exclusivo del plan PRO. Actualiza en infradraw.io' }));
+        } else {
+          console.error(chalk.red('\n✕ Error: Google Cloud (GCP) es una función exclusiva del plan PRO.'));
+          console.error(chalk.yellow('  Actualiza tu cuenta en infradraw.io para acceder a esta plataforma.\n'));
+        }
+        process.exit(1);
+      }
+
       const isManual = provider === 'contabo';
       const needsTerraform = ['hetzner', 'digitalocean', 'vultr', 'linode', 'gcloud'].includes(provider);
       const ramGB = getPlanRAM(provider, vpsConfig.plan || 'cx31');
@@ -1046,6 +1155,166 @@ program
       databaseTypes: ['postgres', 'redis', 'ambas', 'ninguna']
     };
     console.log(JSON.stringify(schemaInfo, null, 2));
+  });
+
+// ───────────────────────────────────────────────────
+// LOGIN
+// ───────────────────────────────────────────────────
+program
+  .command('login')
+  .description('Inicia sesión en InfraDraw (abre el navegador)')
+  .action(async () => {
+    // Pick a random high port
+    const port = Math.floor(Math.random() * (65000 - 49152) + 49152);
+    const authUrl = `${INFRADRAW_BASE_URL}/cli-auth?port=${port}`;
+
+    console.log(chalk.bold('\n🔐 InfraDraw CLI — Login\n'));
+    console.log(chalk.blue('  Abriendo el navegador para autenticación...'));
+    console.log(chalk.gray(`  URL: ${authUrl}\n`));
+
+    let server;
+    const tokenPromise = new Promise((resolve, reject) => {
+      server = http.createServer((req, res) => {
+        // Handle preflight / GET (browser check)
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
+        if (req.method === 'POST' && req.url === '/callback') {
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          req.on('end', () => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true }));
+            try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+          });
+        } else {
+          res.writeHead(404); res.end();
+        }
+      });
+
+      server.listen(port, '127.0.0.1', () => {
+        openBrowser(authUrl);
+      });
+
+      server.on('error', reject);
+    });
+
+    // Timeout after 5 minutes
+    const timeout = setTimeout(() => {
+      server && server.close();
+      console.error(chalk.red('\n✕ Timeout: no se recibió respuesta en 5 minutos.'));
+      process.exit(1);
+    }, 5 * 60 * 1000);
+
+    try {
+      process.stdout.write(chalk.gray('  Esperando autorización'));
+      const dots = setInterval(() => process.stdout.write(chalk.gray('.')), 800);
+
+      const payload = await tokenPromise;
+      clearInterval(dots);
+      clearTimeout(timeout);
+      server.close();
+
+      // Save credentials locally
+      await saveAuth({
+        idToken:      payload.idToken,
+        refreshToken: payload.refreshToken,
+        uid:          payload.uid,
+        email:        payload.email,
+        displayName:  payload.displayName,
+        photoURL:     payload.photoURL,
+        plan:         payload.plan || 'free',
+        issuedAt:     Date.now()
+      });
+
+      console.log(chalk.green('\n\n  ✔ Autenticado correctamente\n'));
+      console.log(`  👤 ${chalk.bold(payload.displayName || payload.email)}`);
+      console.log(`  📧 ${chalk.gray(payload.email)}`);
+      const planLabel = payload.plan === 'pro'
+        ? chalk.blue('⭐ PRO')
+        : chalk.gray('FREE');
+      console.log(`  📄 Plan: ${planLabel}`);
+      console.log(`  📂 Credenciales guardadas en ${chalk.gray(AUTH_FILE)}\n`);
+    } catch (err) {
+      clearTimeout(timeout);
+      server && server.close();
+      console.error(chalk.red('\n✕ Error durante el login: ' + err.message));
+      process.exit(1);
+    }
+  });
+
+// ───────────────────────────────────────────────────
+// LOGOUT
+// ───────────────────────────────────────────────────
+program
+  .command('logout')
+  .description('Cierra la sesión actual del CLI')
+  .action(async () => {
+    const auth = await readAuth();
+    if (!auth) {
+      console.log(chalk.yellow('\n  No hay ninguna sesión activa.\n'));
+      return;
+    }
+    await fs.remove(AUTH_FILE);
+    console.log(chalk.green(`\n  ✔ Sesión cerrada para ${auth.email || 'usuario'}\n`));
+  });
+
+// ───────────────────────────────────────────────────
+// WHOAMI
+// ───────────────────────────────────────────────────
+program
+  .command('whoami')
+  .description('Muestra la cuenta y plan del usuario actual')
+  .option('--json', 'Salida en formato JSON')
+  .action(async (opts) => {
+    const auth = await readAuth();
+    if (!auth) {
+      if (opts.json) {
+        console.log(JSON.stringify({ status: 'not_logged_in' }));
+      } else {
+        console.log(chalk.yellow('\n  No hay sesión activa. Ejecuta: infradraw login\n'));
+      }
+      return;
+    }
+
+    // Try to refresh plan from API
+    let plan = auth.plan || 'free';
+    try {
+      const freshAuth = await requireAuth();
+      const res = await fetch(`${INFRADRAW_BASE_URL}/api/user`, {
+        headers: { 'Authorization': 'Bearer ' + freshAuth.idToken }
+      });
+      if (res.ok) {
+        const profile = await res.json();
+        plan = profile.plan || plan;
+        // Update cached plan
+        auth.plan = plan;
+        await saveAuth(auth);
+      }
+    } catch (_) {}
+
+    if (opts.json) {
+      console.log(JSON.stringify({
+        status: 'logged_in',
+        uid:    auth.uid,
+        email:  auth.email,
+        name:   auth.displayName,
+        plan,
+        issuedAt: auth.issuedAt
+      }));
+    } else {
+      const planLabel = plan === 'pro' ? chalk.blue('⭐ PRO') : chalk.gray('FREE');
+      console.log(chalk.bold('\n👤 Sesión activa\n'));
+      console.log(`  Nombre:  ${chalk.white(auth.displayName || '—')}`);
+      console.log(`  Email:   ${chalk.white(auth.email || '—')}`);
+      console.log(`  Plan:    ${planLabel}`);
+      const age = Math.round((Date.now() - (auth.issuedAt || 0)) / 60000);
+      const tokenStatus = age < 50
+        ? chalk.green(`válido (≈${age} min de uso)`)
+        : chalk.yellow('próximo a expirar (se refrescará automáticamente)');
+      console.log(`  Token:   ${tokenStatus}\n`);
+    }
   });
 
 program.parse(process.argv);
