@@ -1,7 +1,7 @@
 const KV_URL   = process.env.KV_REST_API_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY;
-const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL;
+const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'thequantpartners@gmail.com';
 
 async function redis(cmd) {
   const res = await fetch(KV_URL, {
