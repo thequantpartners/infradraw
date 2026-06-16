@@ -56,6 +56,7 @@ module.exports = async function handler(req, res) {
       name: firebaseUser.displayName || '',
       photoURL: firebaseUser.photoUrl || '',
       plan: existing ? existing.plan : 'free',
+      status: existing ? (existing.status || 'active') : 'active',
       geminiApiKey: existing ? existing.geminiApiKey : null,
       lsCustomerId: existing ? existing.lsCustomerId : null,
       lsSubscriptionId: existing ? existing.lsSubscriptionId : null,

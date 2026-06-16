@@ -31,4 +31,5 @@
 - [x] Creación de un asistente DevOps interactivo en Telegram embebido en la topología con diagnóstico de salud de contenedores y recursos (CPU/RAM/Disco) usando Gemini AI y soporte para auto-escalado interactivo en GCP.
 - [x] Selector global de nube (Private Cloud vs GCP) en el canvas con equivalencias de servicios de GCP, locking de proveedores a 'gcloud' y Terraform nativo para Google Cloud Storage (GCS).
 - [x] Refactorización de la arquitectura del DevOps Bot de Telegram incorporando Auto-Healing (playbooks en memoria), optimización nativa de recursos (CPU/RAM) y salidas estructuradas en JSON.
+- [x] Implementación de un Superadmin Dashboard (`/admin.html`) para visualizar usuarios registrados, gestionar sus planes (FREE/PRO) y bloquear acceso a cuentas problemáticas de forma segura.
 

@@ -73,6 +73,7 @@ module.exports = async function handler(req, res) {
         name: parsed.name,
         email: parsed.email,
         plan: parsed.plan,
+        status: parsed.status || 'active',
         createdAt: parsed.createdAt,
       };
     }).filter(Boolean);

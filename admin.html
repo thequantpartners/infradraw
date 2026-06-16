@@ -281,6 +281,25 @@ function AdminApp() {
       .catch(function (err) { alert('Error updating plan: ' + err.message); });
   }
 
+  function toggleStatus(uid, currentStatus) {
+    var newStatus = currentStatus === 'active' ? 'blocked' : 'active';
+    fetch('/api/admin/user', {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ uid: uid, newStatus: newStatus })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        setUsers(function(prev) {
+          return prev.map(function(u) {
+            return u.uid === uid ? Object.assign({}, u, { status: newStatus }) : u;
+          });
+        });
+      })
+      .catch(function (err) { alert('Error updating status: ' + err.message); });
+  }
+
   var headerEl = h('div', { className: 'header' }, [
     h('div', { key: 'brand' }, [
       h('a', { key: 'b', className: 'brand', href: '/' }, ['Infra', h('span', { key: 's' }, 'Draw')]),
@@ -306,11 +325,22 @@ function AdminApp() {
           h('div', { key: 'email', className: 'user-email' }, user.email)
         ]),
         h('td', { key: 'plan' }, h('span', { className: 'plan-badge ' + (user.plan || 'free') }, user.plan === 'pro' ? '⭐ PRO' : 'FREE')),
+        h('td', { key: 'status' }, h('span', { className: 'plan-badge ' + (user.status === 'blocked' ? 'free' : 'pro'), style: user.status === 'blocked' ? { borderColor: 'var(--danger)', color: 'var(--danger)' } : {} }, user.status === 'blocked' ? 'BLOCKED' : 'ACTIVE')),
         h('td', { key: 'date' }, new Date(user.createdAt).toLocaleDateString()),
-        h('td', { key: 'actions' }, h('button', {
-          className: 'action-btn',
-          onClick: function() { togglePlan(user.uid, user.plan || 'free'); }
-        }, user.plan === 'pro' ? 'Downgrade to FREE' : 'Upgrade to PRO'))
+        h('td', { key: 'actions', style: { display: 'flex', gap: '8px' } }, [
+          h('button', {
+            key: 'plan-btn',
+            className: 'action-btn',
+            onClick: function() { togglePlan(user.uid, user.plan || 'free'); }
+          }, user.plan === 'pro' ? 'Downgrade to FREE' : 'Upgrade to PRO'),
+          h('button', {
+            key: 'block-btn',
+            className: 'action-btn',
+            style: user.email === window.__INFRADRAW_USER_EMAIL ? { opacity: 0.5, cursor: 'not-allowed' } : {},
+            disabled: user.email === window.__INFRADRAW_USER_EMAIL,
+            onClick: function() { toggleStatus(user.uid, user.status || 'active'); }
+          }, user.status === 'blocked' ? 'Unblock' : 'Block')
+        ])
       ]);
     });
 
@@ -319,6 +349,7 @@ function AdminApp() {
         h('thead', { key: 'thead' }, h('tr', null, [
           h('th', { key: 'u' }, 'User'),
           h('th', { key: 'p' }, 'Plan'),
+          h('th', { key: 's' }, 'Status'),
           h('th', { key: 'd' }, 'Joined'),
           h('th', { key: 'a' }, 'Actions')
         ])),

@@ -34,6 +34,11 @@
     try {
       const r = await fetch('/api/auth-sync', { method: 'POST', headers: { 'Authorization': 'Bearer ' + idToken } });
       const profile = await r.json();
+      if (profile.status === 'blocked') {
+        alert('Tu cuenta ha sido bloqueada. Contacta con soporte.');
+        signOut(auth).then(() => window.location.href = '/landing.html');
+        return;
+      }
       window.__INFRADRAW_PLAN = profile.plan || 'free';
     } catch(e) { window.__INFRADRAW_PLAN = 'free'; }
     loadingEl.style.display = 'none';

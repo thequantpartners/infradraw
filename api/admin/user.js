@@ -48,15 +48,20 @@ module.exports = async function handler(req, res) {
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { uid, newPlan } = body;
+    const { uid, newPlan, newStatus } = body;
 
-    if (!uid || !newPlan) {
-      res.status(400).json({ error: 'Missing uid or newPlan' });
+    if (!uid || (!newPlan && !newStatus)) {
+      res.status(400).json({ error: 'Missing uid, newPlan or newStatus' });
       return;
     }
 
-    if (!['free', 'pro'].includes(newPlan)) {
+    if (newPlan && !['free', 'pro'].includes(newPlan)) {
       res.status(400).json({ error: 'Invalid plan' });
+      return;
+    }
+
+    if (newStatus && !['active', 'blocked'].includes(newStatus)) {
+      res.status(400).json({ error: 'Invalid status' });
       return;
     }
 
@@ -68,7 +73,14 @@ module.exports = async function handler(req, res) {
     }
 
     const profile = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    profile.plan = newPlan;
+
+    if (newStatus === 'blocked' && profile.email === SUPERADMIN_EMAIL) {
+      res.status(403).json({ error: 'Cannot block the superadmin' });
+      return;
+    }
+
+    if (newPlan) profile.plan = newPlan;
+    if (newStatus) profile.status = newStatus;
     profile.updatedAt = new Date().toISOString();
 
     await redis(['SET', key, JSON.stringify(profile)]);

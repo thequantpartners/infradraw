@@ -83,3 +83,9 @@
 *   **Estado:** Aprobado
 *   **Contexto:** Se detectó que el monitoreo de recursos en el host usando comandos shell como subprocesos consumía ciclos innecesarios. Adicionalmente, el bot requería interacción manual para comandos repetitivos.
 *   **Decisión:** Reemplazar el chequeo de CPU/RAM por APIs nativas de Node.js (`os`). Cambiar el prompt de Gemini a salida JSON estricta y dotar al bot de memoria local (`playbooks.json`) para habilitar capacidades de "Ejecutar y Recordar" (Auto-Healing). Se mantiene soporte heurístico dual sin API Key.
+
+## 15. Superadmin Dashboard y Control de Acceso (Ban)
+*   **Fecha:** 2026-06-16
+*   **Estado:** Aprobado
+*   **Contexto:** Se necesitaba una forma de gestionar los usuarios, asignar planes PRO y bloquear acceso a usuarios problemáticos, sin tener que usar el CLI de Vercel manualmente.
+*   **Decisión:** Implementar `admin.html` validando el correo del superadministrador vía variable de entorno en el backend (`SUPERADMIN_EMAIL`). Se agregó el estado `status` ('active' o 'blocked') a KV para revocar el acceso desde el `onAuthStateChanged` principal (`index.html`) cuando una cuenta es suspendida, impidiendo su auto-bloqueo.
