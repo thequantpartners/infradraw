@@ -2,7 +2,7 @@
   "rewrites": [
     { "source": "/",                              "destination": "/landing.html"    },
     { "source": "/canvas",                        "destination": "/canvas.html"     },
-    { "source": "/app",                           "destination": "/index.html"      },
+    { "source": "/app",                           "destination": "/app.html"      },
     { "source": "/cli-auth",                      "destination": "/cli-auth.html"   },
     { "source": "/api/(.*)",                      "destination": "https://infradraw-production.up.railway.app/api/$1" }
   ],
@@ -18,7 +18,7 @@
       ]
     },
     {
-      "source": "/index.html",
+      "source": "/app.html",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]

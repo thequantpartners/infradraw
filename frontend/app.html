@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InfraDraw — Mis proyectos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script type="module">
+  // Sesión basada en nuestro JWT (localStorage). Sin Firebase.
+  (function () {
+    function decodeJwt(t) {
+      try {
+        var b = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        var json = decodeURIComponent(atob(b).split('').map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(json);
+      } catch (e) { return null; }
+    }
+
+    function logout() { localStorage.removeItem('token'); window.location.href = '/'; }
+
+    var token = localStorage.getItem('token');
+    if (!token) { logout(); return; }
+
+    var payload = decodeJwt(token);
+    if (!payload || (payload.exp && payload.exp * 1000 < Date.now())) { logout(); return; }
+
+    window.__INFRADRAW_TOKEN = token;
+    window.__INFRADRAW_USER_NAME = payload.name || payload.email || '';
+    window.__INFRADRAW_USER_EMAIL = payload.email || '';
+    window.__INFRADRAW_USER_PHOTO = payload.picture || '';
+    window.__INFRADRAW_PLAN = payload.tier || 'free';
+    window.__INFRADRAW_SIGNOUT = logout;
+
+    var loadingEl = document.getElementById('auth-loading');
+    if (loadingEl) loadingEl.style.display = 'none';
+    var rootEl = document.getElementById('root');
+    if (rootEl) rootEl.style.display = '';
+
+    // La app React puede haber montado antes que este módulo diferido.
+    window.__INFRADRAW_READY && window.__INFRADRAW_READY();
+  })();
+</script>
+<style>
+  :root {
+    --bg: #060b14;
+    --panel: #0d1521;
+    --panel-2: #111c2e;
+    --border: #1e2d44;
+    --text: #e8f0fe;
+    --muted: #7a92b4;
+    --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.25);
+    --danger: #ef4444;
+    --green: #10b981;
+    --grad: linear-gradient(135deg, #4f8cff 0%, #7c5af0 100%);
+    --card-bg: rgba(13, 21, 33, 0.7);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { min-height: 100vh; background: var(--bg); color: var(--text); }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    position: relative;
+    overflow-x: hidden;
+  }
+  /* Radial glow behind everything */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% -10%, rgba(79,140,255,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 90% 90%, rgba(124,90,240,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(13, 21, 33, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .brand {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.6px;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .brand span {
+    font-weight: 800;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 0.2px;
+  }
+
+  /* User Area & Button */
+  .user-area { display: flex; align-items: center; gap: 16px; }
+  .user-avatar { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); object-fit: cover; }
+  .user-name { font-size: 14px; font-weight: 500; color: var(--text); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  
+  .btn-signout {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-signout:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.05);
+  }
+
+  .btn-new {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--grad);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px var(--accent-glow);
+  }
+  .btn-new:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(79, 140, 255, 0.4);
+    opacity: 0.95;
+  }
+  .btn-new:active {
+    transform: translateY(1px);
+  }
+  .btn-new:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .spinner-sm {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Main Container */
+  .main { max-width: 1200px; margin: 0 auto; padding: 40px 24px; position: relative; z-index: 1; }
+  
+  /* Upgrade Banner */
+  .upgrade-banner {
+    background: linear-gradient(90deg, rgba(79, 140, 255, 0.1) 0%, rgba(124, 90, 240, 0.1) 100%);
+    border: 1px solid rgba(79, 140, 255, 0.25);
+    border-radius: 16px;
+    padding: 16px 24px;
+    font-size: 14px;
+    color: #a5b4fc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    animation: fadeIn 0.4s ease;
+  }
+  .upgrade-banner a {
+    background: var(--grad);
+    color: white;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px var(--accent-glow);
+  }
+  .upgrade-banner a:hover {
+    box-shadow: 0 6px 16px rgba(79, 140, 255, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .count-badge {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  /* Grid Layout */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(79, 140, 255, 0.15);
+  }
+  
+  .card-preview {
+    height: 140px;
+    background: linear-gradient(180deg, var(--panel-2) 0%, rgba(17, 28, 46, 0.4) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  /* Grid pattern in card preview */
+  .card-preview::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 16px 16px;
+    opacity: 0.15;
+  }
+  
+  .card-preview-dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+  }
+  .card-preview-node {
+    background: rgba(30, 45, 68, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    backdrop-filter: blur(4px);
+  }
+  .card-preview-empty {
+    color: var(--muted);
+    font-size: 44px;
+    opacity: 0.4;
+    transition: transform 0.3s;
+    z-index: 1;
+  }
+  .card:hover .card-preview-empty {
+    transform: scale(1.1);
+  }
+
+  .card-body { padding: 22px; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+  .card-name { font-size: 18px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  
+  .card-name-input {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 4px 10px;
+    outline: none;
+    width: 100%;
+    font-family: inherit;
+  }
+  
+  .card-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30, 45, 68, 0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .meta-time { margin-left: auto; color: var(--muted); font-size: 11px; }
+
+  .card-footer {
+    padding: 16px 22px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(6, 11, 20, 0.2);
+  }
+  
+  .btn-open {
+    flex: 1;
+    background: var(--grad);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 0;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    text-align: center;
+    box-shadow: 0 4px 12px var(--accent-glow);
+  }
+  .btn-open:hover {
+    box-shadow: 0 6px 16px rgba(79, 140, 255, 0.3);
+    opacity: 0.95;
+  }
+  
+  .btn-icon {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 10px;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  .btn-icon:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(79, 140, 255, 0.05);
+  }
+  .btn-icon.delete:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.05);
+  }
+
+  /* Skeleton Loading */
+  .skeleton {
+    background: linear-gradient(90deg, var(--panel-2) 25%, #222d3e 50%, var(--panel-2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 8px;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .card-skeleton { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; height: 300px; }
+  .sk-preview { height: 140px; background: var(--panel-2); }
+  .sk-body { padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .sk-line { height: 16px; width: 100%; }
+  .sk-line.short { width: 50%; }
+  .sk-footer { height: 70px; border-top: 1px solid var(--border); }
+
+  /* Empty State */
+  .empty {
+    grid-column: 1/-1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 32px;
+    text-align: center;
+    background: var(--card-bg);
+    border: 1px dashed var(--border);
+    border-radius: 24px;
+    backdrop-filter: blur(8px);
+  }
+  .empty-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.7; animation: float 4s ease-in-out infinite; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .empty-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+  .empty-sub { font-size: 15px; color: var(--muted); max-width: 440px; line-height: 1.6; margin-bottom: 24px; }
+
+  /* Error Banner */
+  .error-banner {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger);
+    border-radius: 16px;
+    padding: 18px 24px;
+    color: #fca5a5;
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+  .error-banner b { color: #f87171; }
+
+  /* Toast Notification */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  @keyframes slideIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
+  
+  /* Plan badge in header */
+  .plan-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .plan-badge.free { background: rgba(122, 146, 180, 0.1); border: 1px solid rgba(122, 146, 180, 0.2); color: var(--muted); }
+  .plan-badge.pro  { background: rgba(79, 140, 255, 0.15); border: 1px solid rgba(79, 140, 255, 0.35); color: var(--accent); }
+
+  /* Auth loading */
+  #auth-loading { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .auth-spinner {
+    width: 44px; height: 44px;
+    border: 3px solid var(--panel-2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+
+  @keyframes fadeIn { from{opacity: 0; transform: translateY(10px);} to{opacity: 1; transform: translateY(0);} }
+
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .header { padding: 16px 20px; }
+    .user-name { display: none; }
+    .main { padding: 24px 16px; }
+    .upgrade-banner { flex-direction: column; align-items: flex-start; padding: 16px; border-radius: 12px; }
+    .upgrade-banner a { width: 100%; text-align: center; }
+    .grid { grid-template-columns: 1fr; gap: 16px; }
+    .card { border-radius: 16px; }
+    .card-body { padding: 16px; }
+    .card-footer { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="auth-loading"><div class="auth-spinner"></div></div>
+<div id="root" style="display:none"></div>
+<script>
+(function () {
+"use strict";
+var h = React.createElement;
+var useState = React.useState, useEffect = React.useEffect, useRef = React.useRef;
+
+function relativeTime(iso) {
+  var diff = Date.now() - new Date(iso).getTime();
+  var m = Math.floor(diff / 60000);
+  if (m < 1)  return 'ahora mismo';
+  if (m < 60) return 'hace ' + m + ' min';
+  var hh = Math.floor(m / 60);
+  if (hh < 24) return 'hace ' + hh + 'h';
+  var d = Math.floor(hh / 24);
+  if (d < 30) return 'hace ' + d + (d === 1 ? ' día' : ' días');
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+function Skeleton() {
+  return h('div', { className: 'card-skeleton' }, [
+    h('div', { key: 'p', className: 'sk-preview skeleton' }),
+    h('div', { key: 'b', className: 'sk-body' }, [
+      h('div', { key: 'l1', className: 'sk-line skeleton' }),
+      h('div', { key: 'l2', className: 'sk-line short skeleton' })
+    ]),
+    h('div', { key: 'f', className: 'sk-footer skeleton' })
+  ]);
+}
+
+var ICON_SAMPLES = ['🔀','▲','⚙️','🤖','🐘','🔴','☁️','🖥️','⚖️','🪣','🔥','📊','⚡','🎛️'];
+
+function ProjectCard({ project, onOpen, onDelete, onRename }) {
+  var [renaming, setRenaming] = useState(false);
+  var [renameVal, setRenameVal] = useState(project.name);
+  var inputRef = useRef(null);
+
+  function startRename(e) { e.stopPropagation(); setRenameVal(project.name); setRenaming(true); }
+  function commitRename() { var v = renameVal.trim() || project.name; setRenaming(false); if (v !== project.name) onRename(project.id, v); }
+
+  // Fake preview icons based on nodeCount
+  var count = Math.min(project.nodeCount || 0, 4);
+  var icons = ICON_SAMPLES.slice(0, Math.max(count, 1));
+  var previewContent = project.nodeCount > 0
+    ? h('div', { className: 'card-preview-dots' },
+        icons.map(function (ic, i) {
+          return h('div', { key: i, className: 'card-preview-node' }, [
+            h('span', { key: 'i', style: { fontSize: 16 } }, ic)
+          ]);
+        }).concat(project.nodeCount > 4
+          ? [h('div', { key: 'more', className: 'card-preview-node' }, h('span', { key: 's' }, '+' + (project.nodeCount - 4)))]
+          : [])
+      )
+    : h('div', { className: 'card-preview-empty' }, '🗂️');
+
+  return h('div', { className: 'card', onClick: function () { if (!renaming) onOpen(project.id); } }, [
+    h('div', { key: 'prev', className: 'card-preview' }, previewContent),
+    h('div', { key: 'body', className: 'card-body' }, [
+      renaming
+        ? h('input', { key: 'inp', ref: inputRef, className: 'card-name-input', value: renameVal, autoFocus: true,
+            onChange: function (e) { setRenameVal(e.target.value); },
+            onClick: function (e) { e.stopPropagation(); },
+            onBlur: commitRename,
+            onKeyDown: function (e) { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { setRenaming(false); } e.stopPropagation(); }
+          })
+        : h('div', { key: 'name', className: 'card-name' }, project.name),
+      h('div', { key: 'meta', className: 'card-meta' }, [
+        h('span', { key: 'n', className: 'meta-chip' }, ['📌 ', project.nodeCount || 0, ' nodos']),
+        project.areaCount > 0 ? h('span', { key: 'a', className: 'meta-chip' }, ['🔲 ', project.areaCount, ' áreas']) : null,
+        h('span', { key: 't', className: 'meta-time' }, relativeTime(project.updatedAt || project.createdAt))
+      ])
+    ]),
+    h('div', { key: 'foot', className: 'card-footer' }, [
+      h('button', { key: 'open', className: 'btn-open', onClick: function (e) { e.stopPropagation(); onOpen(project.id); } }, 'Abrir →'),
+      h('button', { key: 'ren', className: 'btn-icon rename', title: 'Renombrar', onClick: startRename }, '✏️'),
+      h('button', { key: 'del', className: 'btn-icon delete', title: 'Eliminar proyecto', onClick: function (e) { e.stopPropagation(); onDelete(project.id, project.name); } }, '🗑️')
+    ])
+  ]);
+}
+
+function authHeaders() {
+  var token = window.__INFRADRAW_TOKEN || '';
+  return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+}
+
+function App() {
+  var [projects, setProjects] = useState([]);
+  var [loading,  setLoading]  = useState(true);
+  var [creating, setCreating] = useState(false);
+  var [error,    setError]    = useState(null);
+  var [toast,    setToast]    = useState(null);
+  var [plan,     setPlan]     = useState(window.__INFRADRAW_PLAN || 'free');
+  var toastTimer = useRef(null);
+
+  function showToast(msg) {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(function () { setToast(null); }, 2800);
+  }
+
+  function loadProjects() {
+    setLoading(true);
+    fetch('/api/projects', { headers: authHeaders() })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) { setError(data.error); setLoading(false); return; }
+        setProjects(data); setError(null); setLoading(false);
+        setPlan(window.__INFRADRAW_PLAN || 'free');
+      })
+      .catch(function (err) { setError('No se pudo conectar con la API. ' + err.message); setLoading(false); });
+  }
+
+  useEffect(function () {
+    // Esperar a que la sesión JWT esté lista antes de cargar.
+    if (window.__INFRADRAW_TOKEN) {
+      loadProjects();
+    } else {
+      window.__INFRADRAW_READY = function() { setPlan(window.__INFRADRAW_PLAN||'free'); loadProjects(); };
+    }
+  }, []);
+
+  function createProject() {
+    if (plan === 'free' && projects.length >= 3) {
+      alert('Plan FREE: límite de 3 proyectos alcanzado.\nActualiza a PRO para proyectos ilimitados.');
+      return;
+    }
+    setCreating(true);
+    fetch('/api/projects', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ name: 'Nuevo diagrama' })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) {
+          if (data.code === 'LIMIT_REACHED') {
+            alert('Plan FREE: límite de 3 proyectos alcanzado. Actualiza a PRO.');
+          } else {
+            alert('Error: ' + data.error);
+          }
+          setCreating(false); return;
+        }
+        window.location.href = '/canvas.html?id=' + data.id;
+      })
+      .catch(function () { alert('Error al crear el proyecto'); setCreating(false); });
+  }
+
+  function openProject(id) { window.location.href = '/canvas.html?id=' + id; }
+
+  function deleteProject(id, name) {
+    if (!confirm('¿Eliminar "' + name + '"?\nEsta acción no se puede deshacer.')) return;
+    fetch('/api/project?id=' + id, { method: 'DELETE', headers: authHeaders() })
+      .then(function (r) { return r.json(); })
+      .then(function () { showToast('"' + name + '" eliminado'); loadProjects(); })
+      .catch(function () { alert('Error al eliminar'); });
+  }
+
+  function renameProject(id, newName) {
+    fetch('/api/project?id=' + id, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ name: newName })
+    })
+      .then(function () {
+        showToast('Renombrado a "' + newName + '"');
+        setProjects(function (p) { return p.map(function (proj) { return proj.id === id ? Object.assign({}, proj, { name: newName }) : proj; }); });
+      })
+      .catch(function () { alert('Error al renombrar'); });
+  }
+
+  // Render
+  var planLabel = plan === 'pro'
+    ? h('span', { className: 'plan-badge pro' }, '⭐ PRO')
+    : h('span', { className: 'plan-badge free' }, 'FREE');
+  var userPhoto = window.__INFRADRAW_USER_PHOTO
+    ? h('img', { key: 'photo', src: window.__INFRADRAW_USER_PHOTO, className: 'user-avatar', alt: '' })
+    : null;
+
+  var adminLink = window.__INFRADRAW_USER_EMAIL === 'thequantpartners@gmail.com'
+    ? h('a', { key: 'admin', href: '/admin.html', className: 'btn-signout', style: { textDecoration: 'none', color: 'var(--accent)', borderColor: 'var(--accent)' } }, 'Admin')
+    : null;
+
+  var headerEl = h('div', { className: 'header' }, [
+    h('div', { key: 'brand' }, [
+      h('div', { key: 'b', className: 'brand' }, ['Infra', h('span', { key: 's' }, 'Draw')]),
+      h('div', { key: 'sub', className: 'brand-sub' }, 'Canvas de infraestructura Docker-first')
+    ]),
+    h('div', { key: 'right', className: 'user-area' }, [
+      adminLink,
+      planLabel,
+      userPhoto,
+      h('span', { key: 'name', className: 'user-name' }, window.__INFRADRAW_USER_NAME || ''),
+      h('button', { key: 'so', className: 'btn-signout', onClick: function() { window.__INFRADRAW_SIGNOUT && window.__INFRADRAW_SIGNOUT(); } }, 'Salir'),
+      h('button', { key: 'new', className: 'btn-new', disabled: creating, onClick: createProject }, [
+        creating ? h('div', { key: 'sp', className: 'spinner-sm' }) : h('span', { key: 'i' }, '+'),
+        creating ? 'Creando…' : 'Nuevo proyecto'
+      ])
+    ])
+  ]);
+
+  var mainContent;
+  if (loading) {
+    mainContent = h('div', { className: 'grid' },
+      [0,1,2,3,4,5].map(function (i) { return h(Skeleton, { key: i }); })
+    );
+  } else if (error) {
+    mainContent = h('div', {}, [
+      h('div', { key: 'err', className: 'error-banner' }, [
+        h('b', { key: 'b' }, '⚠ Error de conexión: '),
+        error,
+        h('br', { key: 'br' }),
+        h('span', { key: 's', style: { opacity: .8, fontSize: 12 } }, 'Asegúrate de haber configurado DATABASE_URL y JWT_SECRET en el backend.')
+      ])
+    ]);
+  } else if (projects.length === 0) {
+    mainContent = h('div', { className: 'grid' }, [
+      h('div', { key: 'empty', className: 'empty' }, [
+        h('div', { key: 'i', className: 'empty-icon' }, '🗂️'),
+        h('div', { key: 't', className: 'empty-title' }, 'Sin proyectos aún'),
+        h('div', { key: 's', className: 'empty-sub' }, 'Crea tu primer diagrama de infraestructura. Puedes diseñar redes Docker, stacks de monitoreo, flujos CI/CD y más.'),
+        h('button', { key: 'btn', className: 'btn-new', style: { marginTop: 8 }, disabled: creating, onClick: createProject }, [
+          creating ? h('div', { key: 'sp', className: 'spinner-sm' }) : h('span', { key: 'i' }, '+'),
+          creating ? 'Creando…' : 'Crear primer proyecto'
+        ])
+      ])
+    ]);
+  } else {
+    mainContent = h('div', { className: 'grid' },
+      projects.map(function (proj) {
+        return h(ProjectCard, {
+          key: proj.id, project: proj,
+          onOpen: openProject,
+          onDelete: deleteProject,
+          onRename: renameProject
+        });
+      })
+    );
+  }
+
+  var upgradeBanner = plan === 'free'
+    ? h('div', { className: 'upgrade-banner' }, [
+        h('span', { key: 't' }, '🚀 Estás en el plan FREE — ' + projects.length + '/3 proyectos. '),
+        h('a', { key: 'l', href: '/landing.html#pricing' }, 'Actualizar a PRO →')
+      ])
+    : null;
+
+  return h('div', {}, [
+    headerEl,
+    h('div', { key: 'main', className: 'main' }, [
+      upgradeBanner,
+      !loading && !error && projects.length > 0
+        ? h('div', { key: 'sh', className: 'section-head' }, [
+            h('span', { key: 't', className: 'section-title' }, 'Mis diagramas'),
+            h('span', { key: 'c', className: 'count-badge' }, projects.length + (projects.length === 1 ? ' proyecto' : ' proyectos'))
+          ])
+        : null,
+      mainContent
+    ]),
+    toast ? h('div', { key: 'toast', className: 'toast' }, '✓ ' + toast) : null
+  ]);
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+})();
+</script>
+</body>
+</html>
