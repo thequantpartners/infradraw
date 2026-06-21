@@ -4,9 +4,7 @@
     { "source": "/canvas",                        "destination": "/canvas.html"     },
     { "source": "/app",                           "destination": "/index.html"      },
     { "source": "/cli-auth",                      "destination": "/cli-auth.html"   },
-    { "source": "/api/auth-sync",                 "destination": "/api/auth-sync.js" },
-    { "source": "/api/user",                      "destination": "/api/user.js"     },
-    { "source": "/api/webhooks/lemonsqueezy",     "destination": "/api/webhooks/lemonsqueezy.js" }
+    { "source": "/api/(.*)",                      "destination": "https://TU_URL_DE_RAILWAY.up.railway.app/api/$1" }
   ],
   "headers": [
     {
