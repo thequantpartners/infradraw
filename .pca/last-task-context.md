@@ -1,7 +1,7 @@
 # PCA Task Context
 
 ## Task
-Create Superadmin Dashboard to manage users and plans
+Rediseñar UX con onboarding y nuevo dashboard
 
 ## Mode
 local-only — No vector retrieval. Context built from local memory files.
@@ -58,10 +58,10 @@ Only after explicit user confirmation with `SI`:
 5. sync changed files to vector memory
 
 ## Relevant Context Commits
-- [general] docs: close task and update context logs (2026-06-15T22:21:58.001Z)
-- [general] docs: close task and update context logs (2026-06-15T04:39:49.874Z)
+- [general] chore: set Google OAuth Client ID in frontend and backend (2026-06-21T02:41:11.076Z)
+- [architecture] feat: migrate to postgresql and custom jwt auth, drop firebase and vercel kv (2026-06-21T02:22:12.900Z)
+- [general] chore: configure Vercel proxy to Railway production backend (2026-06-21T01:59:58.899Z)
 - [general] fix(canvas): resolve race condition in project loading and enhance dashboard UX/UI (2026-06-15T03:11:57.034Z)
-- [general] docs: update README.md to document SaaS integration, plans, and CLI auth commands (2026-06-15T02:08:50.861Z)
 
 ## Agent Instructions
 Use the project memory above as your only context source.

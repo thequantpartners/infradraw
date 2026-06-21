@@ -53,6 +53,27 @@ export function logout(navigate) {
   else window.location.href = '/';
 }
 
+// --- Estado de onboarding (simulado en el frontend, por usuario) ---
+// Cuando exista backend, reemplazar por un flag en el perfil del usuario.
+const ONBOARDING_PREFIX = 'infradraw_onboarding:';
+
+export function isOnboardingDone(session) {
+  if (!session || !session.email) return false;
+  return localStorage.getItem(ONBOARDING_PREFIX + session.email) === '1';
+}
+
+export function setOnboardingDone(session) {
+  if (session && session.email) {
+    localStorage.setItem(ONBOARDING_PREFIX + session.email, '1');
+  }
+}
+
+export function resetOnboarding(session) {
+  if (session && session.email) {
+    localStorage.removeItem(ONBOARDING_PREFIX + session.email);
+  }
+}
+
 // Hook para páginas protegidas (ej. /app). Redirige a / si no hay sesión válida.
 export function useAuthGuard() {
   const navigate = useNavigate();

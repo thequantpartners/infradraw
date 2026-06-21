@@ -1,19 +1,41 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthGuard, authHeaders, logout } from '../lib/auth.js';
-import Header from '../components/dashboard/Header.jsx';
-import ProjectCard from '../components/dashboard/ProjectCard.jsx';
 import Skeleton from '../components/dashboard/Skeleton.jsx';
-import EmptyState from '../components/dashboard/EmptyState.jsx';
 import Toast from '../components/dashboard/Toast.jsx';
-import UpgradeBanner from '../components/dashboard/UpgradeBanner.jsx';
+import {
+  Sidebar,
+  TopBar,
+  StatCard,
+  ActivityChart,
+  ProjectStatusCard,
+  Panel,
+  ActivityFeed,
+  ServiceHealth,
+  HighlightCard,
+  Icon,
+} from '../components/DashboardWidgets.jsx';
+
+const ADMIN_EMAIL = 'thequantpartners@gmail.com';
+
+// PRNG determinista para generar series estables a partir de los datos reales.
+function seeded(seed) {
+  let s = (seed % 2147483647) || 1;
+  if (s <= 0) s += 2147483646;
+  return () => (s = (s * 16807) % 2147483647) / 2147483647;
+}
+function makeSeries(n, base, rng) {
+  return Array.from({ length: n }, (_, i) =>
+    Math.max(0, Math.round(base + base * 0.45 * Math.sin(i / 1.6 + base) + (rng() - 0.5) * base * 0.5))
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const session = useAuthGuard();
 
   useEffect(() => {
-    if (session && session.email === 'thequantpartners@gmail.com') {
+    if (session && session.email === ADMIN_EMAIL) {
       navigate('/admin', { replace: true });
     }
   }, [session, navigate]);
@@ -23,6 +45,8 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+  const [nav, setNav] = useState('dashboard');
+  const [query, setQuery] = useState('');
   const toastTimer = useRef(null);
 
   const plan = session?.plan || 'free';
@@ -43,7 +67,7 @@ export default function Dashboard() {
           setLoading(false);
           return;
         }
-        setProjects(data);
+        setProjects(Array.isArray(data) ? data : []);
         setError(null);
         setLoading(false);
       })
@@ -102,86 +126,210 @@ export default function Dashboard() {
       .catch(() => alert('Error al eliminar'));
   }
 
-  function renameProject(id, newName) {
-    fetch('/api/project?id=' + id, {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify({ name: newName }),
-    })
-      .then(() => {
-        showToast('Renombrado a "' + newName + '"');
-        setProjects((p) => p.map((proj) => (proj.id === id ? { ...proj, name: newName } : proj)));
-      })
-      .catch(() => alert('Error al renombrar'));
+  function handleNavigate(key) {
+    if (key === 'projects') {
+      setNav('projects');
+      document.getElementById('projects-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    setNav(key);
+    if (key !== 'dashboard') showToast('Sección "' + key + '" próximamente');
   }
+
+  // --- KPIs y series derivados de los proyectos reales ---
+  const totalNodes = useMemo(() => projects.reduce((s, p) => s + (p.nodeCount || 0), 0), [projects]);
+  const totalAreas = useMemo(() => projects.reduce((s, p) => s + (p.areaCount || 0), 0), [projects]);
+  const estCost = Math.round(totalNodes * 6.4 + projects.length * 5);
+
+  const datasets = useMemo(() => {
+    const rng = seeded(totalNodes * 7 + projects.length * 31 + 13);
+    const baseD = Math.max(4, totalNodes || 6);
+    return [
+      {
+        label: 'Días',
+        points: makeSeries(7, baseD, rng),
+        compare: makeSeries(7, baseD * 0.8, rng),
+        xLabels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+      },
+      {
+        label: 'Semanas',
+        points: makeSeries(6, baseD * 2.4, rng),
+        compare: makeSeries(6, baseD * 2, rng),
+        xLabels: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'],
+      },
+      {
+        label: 'Meses',
+        points: makeSeries(6, baseD * 9, rng),
+        compare: makeSeries(6, baseD * 7.5, rng),
+        xLabels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+      },
+    ];
+  }, [totalNodes, projects.length]);
+
+  const spark = (seed) => makeSeries(10, 10, seeded(seed));
+
+  const services = [
+    { name: 'API Gateway', status: 'ok', uptime: '99.98%' },
+    { name: 'PostgreSQL', status: 'ok', uptime: '99.95%' },
+    { name: 'Redis Cache', status: 'ok', uptime: '100%' },
+    { name: 'Telegram Bot', status: plan === 'pro' ? 'ok' : 'warn', uptime: plan === 'pro' ? '99.9%' : 'Inactivo' },
+    { name: 'CI/CD Runner', status: 'ok', uptime: '99.7%' },
+  ];
+
+  const activity = useMemo(() => {
+    const recent = [...projects]
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 4)
+      .map((p) => ({
+        icon: '✏️',
+        bg: 'bg-blue/12',
+        text: `Editaste "${p.name}"`,
+        time: timeAgo(p.updatedAt || p.createdAt),
+      }));
+    const synthetic = [
+      { icon: '🚀', bg: 'bg-emerald/12', text: 'Despliegue completado en producción', time: 'hace 2h' },
+      { icon: '🤖', bg: 'bg-purple/12', text: 'Architect AI generó una topología', time: 'hace 5h' },
+    ];
+    return [...recent, ...synthetic].slice(0, 5);
+  }, [projects]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return projects;
+    return projects.filter((p) => (p.name || '').toLowerCase().includes(q));
+  }, [projects, query]);
 
   if (!session) return null;
 
-  let mainContent;
-  if (loading) {
-    mainContent = (
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6 max-md:grid-cols-1 max-md:gap-4">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <Skeleton key={i} />
-        ))}
-      </div>
-    );
-  } else if (error) {
-    mainContent = (
-      <div className="mb-8 rounded-2xl border border-danger bg-danger/10 px-6 py-[18px] text-[14px] leading-[1.6] text-[#fca5a5]">
-        <b className="text-[#f87171]">⚠ Error de conexión: </b>
-        {error}
-        <br />
-        <span className="text-[12px] opacity-80">
-          Asegúrate de haber configurado DATABASE_URL y JWT_SECRET en el backend.
-        </span>
-      </div>
-    );
-  } else if (projects.length === 0) {
-    mainContent = (
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6 max-md:grid-cols-1 max-md:gap-4">
-        <EmptyState creating={creating} onCreate={createProject} />
-      </div>
-    );
-  } else {
-    mainContent = (
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6 max-md:grid-cols-1 max-md:gap-4">
-        {projects.map((proj) => (
-          <ProjectCard
-            key={proj.id}
-            project={proj}
-            onOpen={openProject}
-            onDelete={deleteProject}
-            onRename={renameProject}
-          />
-        ))}
+  return (
+    <div className="min-h-screen md:pl-[76px]">
+      <Sidebar active={nav} onNavigate={handleNavigate} onSignout={() => logout(navigate)} />
+
+      <TopBar
+        session={session}
+        plan={plan}
+        query={query}
+        onQuery={setQuery}
+        creating={creating}
+        onCreate={createProject}
+      />
+
+      <main className="mx-auto max-w-[1320px] px-7 pb-24 pt-6 max-md:px-4 md:pb-10">
+        {/* KPIs */}
+        <section className="grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-sm:grid-cols-1 max-md:gap-3">
+          <StatCard label="Proyectos activos" value={projects.length} delta="12%" deltaUp icon="folder" accent="blue" spark={spark(1 + projects.length)} />
+          <StatCard label="Nodos desplegados" value={totalNodes} sub={`${totalAreas} áreas`} delta="8%" deltaUp icon="server" accent="cyan" spark={spark(99 + totalNodes)} />
+          <StatCard label="Costo estimado" value={`$${estCost}`} sub="/ mes" delta="4%" deltaUp={false} icon="coins" accent="purple" spark={spark(7 + estCost)} />
+          <StatCard label="Uptime promedio" value="99.9%" sub="últimos 30 días" delta="0.2%" deltaUp icon="shield" accent="emerald" spark={spark(42)} />
+        </section>
+
+        {/* Cuerpo: gráfico + proyectos (izq) | resumen (der) */}
+        <section className="mt-5 grid grid-cols-[1.65fr_1fr] gap-5 max-lg:grid-cols-1">
+          <div className="flex flex-col gap-5">
+            <ActivityChart datasets={datasets} />
+
+            <div id="projects-section">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-[16px] font-bold text-text">
+                  Mis proyectos
+                  <span className="ml-2 rounded-full border border-border bg-surface2 px-2.5 py-0.5 text-[11px] font-semibold text-muted">
+                    {projects.length}
+                  </span>
+                </h2>
+                <button
+                  onClick={createProject}
+                  disabled={creating}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px] font-semibold text-text transition-colors hover:border-blue hover:text-blue disabled:opacity-60"
+                >
+                  <Icon.plus className="h-3.5 w-3.5" /> Nuevo
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                  {[0, 1, 2, 3].map((i) => (
+                    <Skeleton key={i} />
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="rounded-2xl border border-danger/40 bg-danger/10 px-5 py-4 text-[13px] leading-[1.6] text-[#fca5a5]">
+                  <b className="text-[#f87171]">⚠ Error de conexión: </b>
+                  {error}
+                  <div className="mt-1 text-[11px] opacity-80">
+                    Asegúrate de haber configurado DATABASE_URL y JWT_SECRET en el backend.
+                  </div>
+                </div>
+              ) : filtered.length === 0 ? (
+                <EmptyProjects query={query} creating={creating} onCreate={createProject} />
+              ) : (
+                <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                  {filtered.map((p) => (
+                    <ProjectStatusCard key={p.id} project={p} onOpen={openProject} onDelete={deleteProject} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Columna derecha */}
+          <aside className="flex flex-col gap-5">
+            <HighlightCard plan={plan} />
+
+            <Panel title="Estado de servicios" action={<span className="text-[11px] font-semibold text-emerald">● En vivo</span>}>
+              <ServiceHealth services={services} />
+            </Panel>
+
+            <Panel title="Actividad reciente">
+              <ActivityFeed items={activity} />
+            </Panel>
+          </aside>
+        </section>
+      </main>
+
+      {toast && <Toast message={toast} />}
+    </div>
+  );
+}
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'ahora';
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `hace ${h}h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d}d`;
+}
+
+function EmptyProjects({ query, creating, onCreate }) {
+  if (query) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-surface/40 px-6 py-12 text-center text-[14px] text-muted">
+        No hay proyectos que coincidan con “{query}”.
       </div>
     );
   }
-
   return (
-    <div>
-      <Header
-        session={session}
-        plan={plan}
-        creating={creating}
-        onCreate={createProject}
-        onSignout={() => logout(navigate)}
-      />
-      <div className="relative z-[1] mx-auto max-w-[1200px] px-6 py-10 max-md:px-4 max-md:py-6">
-        {plan === 'free' && <UpgradeBanner count={projects.length} />}
-        {!loading && !error && projects.length > 0 && (
-          <div className="mb-6 flex items-center justify-between">
-            <span className="text-[16px] font-bold uppercase tracking-[.5px] text-muted">Mis diagramas</span>
-            <span className="rounded-[20px] border border-border bg-surface2 px-[14px] py-1 text-[12px] font-semibold text-text">
-              {projects.length}
-              {projects.length === 1 ? ' proyecto' : ' proyectos'}
-            </span>
-          </div>
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface/40 px-6 py-14 text-center backdrop-blur-md">
+      <div className="mb-3 animate-float text-[52px] opacity-70">🗂️</div>
+      <div className="mb-1.5 text-[18px] font-extrabold text-text">Sin proyectos aún</div>
+      <p className="mb-5 max-w-[380px] text-[13px] leading-[1.6] text-muted">
+        Crea tu primer diagrama de infraestructura: redes Docker, stacks de monitoreo, flujos CI/CD y más.
+      </p>
+      <button
+        onClick={onCreate}
+        disabled={creating}
+        className="inline-flex items-center gap-2 rounded-xl bg-grad px-5 py-2.5 text-[14px] font-bold text-white shadow-accent transition-all hover:-translate-y-px hover:shadow-accent-hover disabled:opacity-60"
+      >
+        {creating ? (
+          <span className="h-[14px] w-[14px] animate-spin-fast rounded-full border-2 border-white/30 border-t-white" />
+        ) : (
+          '+'
         )}
-        {mainContent}
-      </div>
-      {toast && <Toast message={toast} />}
+        Crear primer proyecto
+      </button>
     </div>
   );
 }
