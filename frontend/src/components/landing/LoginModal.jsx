@@ -25,7 +25,17 @@ export default function LoginModal({ open, onClose }) {
         throw new Error(data.error || 'No se pudo iniciar sesión.');
       }
       localStorage.setItem('token', data.token);
-      navigate('/app');
+      
+      // Decodificar el token para revisar si es el superadmin
+      const base64Url = data.token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(decodeURIComponent(atob(base64).split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+      
+      if (payload.email === 'thequantpartners@gmail.com') {
+        navigate('/admin');
+      } else {
+        navigate('/app');
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError(err.message);

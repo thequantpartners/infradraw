@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isAuthenticated } from '../lib/auth.js';
+import { getSession } from '../lib/auth.js';
 import Nav from '../components/landing/Nav.jsx';
 import Hero from '../components/landing/Hero.jsx';
 import Features from '../components/landing/Features.jsx';
@@ -13,9 +13,16 @@ export default function Landing() {
   const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Si ya hay sesión (JWT válido en localStorage) → al dashboard.
+  // Si ya hay sesión (JWT válido en localStorage) → al dashboard o admin.
   useEffect(() => {
-    if (isAuthenticated()) navigate('/app', { replace: true });
+    const session = getSession();
+    if (session) {
+      if (session.email === 'thequantpartners@gmail.com') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/app', { replace: true });
+      }
+    }
   }, [navigate]);
 
   const openModal = () => setModalOpen(true);

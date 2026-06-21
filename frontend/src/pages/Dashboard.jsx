@@ -12,6 +12,12 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const session = useAuthGuard();
 
+  useEffect(() => {
+    if (session && session.email === 'thequantpartners@gmail.com') {
+      navigate('/admin', { replace: true });
+    }
+  }, [session, navigate]);
+
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
