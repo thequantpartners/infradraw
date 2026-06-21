@@ -1,24 +1,25 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/",                              "destination": "/landing.html"    },
-    { "source": "/canvas",                        "destination": "/canvas.html"     },
-    { "source": "/app",                           "destination": "/app.html"      },
-    { "source": "/cli-auth",                      "destination": "/cli-auth.html"   },
-    { "source": "/api/(.*)",                      "destination": "https://infradraw-production.up.railway.app/api/$1" }
+    { "source": "/api/(.*)", "destination": "https://infradraw-production.up.railway.app/api/$1" },
+    { "source": "/canvas",   "destination": "/canvas.html" },
+    { "source": "/admin",    "destination": "/admin.html" },
+    { "source": "/((?!api/|canvas\\.html|admin\\.html|assets/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options",  "value": "nosniff" },
-        { "key": "X-Frame-Options",          "value": "SAMEORIGIN" },
-        { "key": "X-XSS-Protection",         "value": "1; mode=block" },
-        { "key": "Referrer-Policy",          "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy",       "value": "camera=(), microphone=(), geolocation=()" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options",         "value": "SAMEORIGIN" },
+        { "key": "X-XSS-Protection",        "value": "1; mode=block" },
+        { "key": "Referrer-Policy",         "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy",      "value": "camera=(), microphone=(), geolocation=()" }
       ]
     },
     {
-      "source": "/app.html",
+      "source": "/index.html",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
