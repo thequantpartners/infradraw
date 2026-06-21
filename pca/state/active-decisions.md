@@ -89,3 +89,15 @@
 *   **Estado:** Aprobado
 *   **Contexto:** Se necesitaba una forma de gestionar los usuarios, asignar planes PRO y bloquear acceso a usuarios problemáticos, sin tener que usar el CLI de Vercel manualmente.
 *   **Decisión:** Implementar `admin.html` validando el correo del superadministrador vía variable de entorno en el backend (`SUPERADMIN_EMAIL`). Se agregó el estado `status` ('active' o 'blocked') a KV para revocar el acceso desde el `onAuthStateChanged` principal (`index.html`) cuando una cuenta es suspendida, impidiendo su auto-bloqueo.
+
+## 16. Enfoque 100% Visual y Remoción de CLI en v2
+*   **Fecha:** 2026-06-20
+*   **Estado:** Aprobado
+*   **Contexto:** El usuario final de InfraDraw es un operador no técnico, por lo que una CLI de terminal resultaba redundante y agregaba mantenimiento de código duplicado.
+*   **Decisión:** Eliminar por completo el subproyecto de línea de comandos (`cli/`) y centralizar el motor de costes, simulación y generación de despliegue directamente en la SPA cliente de `canvas.html` para un flujo de un solo clic.
+
+## 17. Migración del Backend a Railway/Express
+*   **Fecha:** 2026-06-20
+*   **Estado:** Aprobado
+*   **Contexto:** Para aprovechar la suscripción activa del usuario en Railway y preparar la plataforma para operaciones persistentes y de larga duración (como correr bots continuos o Terraform en segundo plano), se requería mover el backend fuera de Vercel.
+*   **Decisión:** Crear `package.json` y `server.js` en la raíz del monorrepo, envolviendo las funciones serverless de `/api/` en un servidor Express tradicional que sirve tanto el frontend estático como las APIs en el puerto dinámico de Railway.

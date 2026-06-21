@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>InfraDraw — Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -44,7 +47,7 @@
   }
   * { box-sizing: border-box; }
   html, body, #root { height: 100%; margin: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+  body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
   .app { display: flex; height: 100%; width: 100%; }
   .sidebar { width: 230px; flex: 0 0 230px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 5; }
   .sidebar-head { padding: 16px 16px 10px; border-bottom: 1px solid var(--border); flex: 0 0 auto; }
@@ -155,6 +158,167 @@
   .val-sec-title:first-child { margin-top: 0; }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .btn.primary:hover { background: #3d7bff; border-color: #3d7bff; }
+
+  /* ============================================================
+     InfraDraw v2 — DevOps Copilot (glassmorphic, GCP)
+     ============================================================ */
+  :root {
+    --gcp-blue: #4285F4; --gcp-green: #34A853; --gcp-yellow: #FBBC05; --gcp-red: #EA4335;
+    --glass: rgba(22,27,34,.72); --glass-bd: rgba(255,255,255,.08);
+    --grad-gcp: linear-gradient(135deg,#4285F4 0%,#34A853 100%);
+  }
+  .v2-btn { background: var(--grad-gcp); color:#fff; border:none; border-radius:8px; padding:8px 13px; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:7px; box-shadow:0 4px 14px rgba(66,133,244,.35); transition:transform .12s, box-shadow .15s; font-family:inherit; }
+  .v2-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(66,133,244,.5); }
+  .v2-btn:active { transform:translateY(0); }
+  .v2-btn.ghost { background:var(--panel-2); color:var(--text); border:1px solid var(--border); box-shadow:none; }
+  .v2-btn.ghost:hover { border-color:var(--accent); }
+  .glass { background:var(--glass); backdrop-filter:blur(16px) saturate(120%); -webkit-backdrop-filter:blur(16px) saturate(120%); border:1px solid var(--glass-bd); }
+  @keyframes v2-fade { from { opacity:0; } to { opacity:1; } }
+  @keyframes v2-rise { from { opacity:0; transform:translateY(14px) scale(.98); } to { opacity:1; transform:none; } }
+  @keyframes v2-slide-r { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:none; } }
+  @keyframes v2-pulse { 0%,100% { opacity:.35; } 50% { opacity:1; } }
+  @keyframes v2-bounce { 0%,80%,100% { transform:scale(.5); opacity:.4; } 40% { transform:scale(1); opacity:1; } }
+
+  /* ---- Onboarding ---- */
+  .onb-ov { position:fixed; inset:0; background:rgba(5,8,14,.78); backdrop-filter:blur(6px); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; animation:v2-fade .25s ease; }
+  .onb-card { width:560px; max-width:94vw; border-radius:18px; padding:0; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,.6); animation:v2-rise .3s cubic-bezier(.2,.8,.2,1); }
+  .onb-top { padding:22px 26px 6px; }
+  .onb-kicker { font-size:11px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; background:var(--grad-gcp); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .onb-h { font-size:22px; font-weight:800; margin:8px 0 4px; }
+  .onb-p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+  .onb-steps { display:flex; gap:8px; padding:16px 26px 0; }
+  .onb-step { flex:1; display:flex; flex-direction:column; gap:6px; }
+  .onb-bar { height:4px; border-radius:3px; background:var(--panel-2); overflow:hidden; }
+  .onb-bar i { display:block; height:100%; width:0; background:var(--grad-gcp); transition:width .4s ease; }
+  .onb-step.done .onb-bar i, .onb-step.active .onb-bar i { width:100%; }
+  .onb-step-lbl { font-size:10.5px; color:var(--muted); font-weight:600; }
+  .onb-step.active .onb-step-lbl, .onb-step.done .onb-step-lbl { color:var(--text); }
+  .onb-body { padding:22px 26px; min-height:210px; animation:v2-fade .3s ease; }
+  .onb-icon { width:54px; height:54px; border-radius:14px; display:grid; place-items:center; font-size:26px; margin-bottom:14px; background:rgba(66,133,244,.14); border:1px solid rgba(66,133,244,.3); }
+  .onb-foot { padding:16px 26px; border-top:1px solid var(--glass-bd); display:flex; align-items:center; gap:10px; }
+  .onb-skip { background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; font-family:inherit; }
+  .onb-skip:hover { color:var(--text); }
+  .onb-spacer { flex:1; }
+  .onb-field { margin-bottom:12px; }
+  .onb-field label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:5px; }
+  .onb-input { width:100%; background:var(--panel-2); border:1px solid var(--border); border-radius:9px; color:var(--text); padding:9px 11px; font-size:13.5px; font-family:inherit; outline:none; }
+  .onb-input:focus { border-color:var(--gcp-blue); box-shadow:0 0 0 3px rgba(66,133,244,.18); }
+  .onb-google { display:flex; align-items:center; gap:10px; width:100%; justify-content:center; background:#fff; color:#1f1f1f; border:none; border-radius:10px; padding:11px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; transition:filter .15s; }
+  .onb-google:hover { filter:brightness(.96); }
+  .onb-connected { display:flex; align-items:center; gap:10px; padding:11px 13px; border-radius:10px; background:rgba(52,168,83,.12); border:1px solid rgba(52,168,83,.35); color:#86efac; font-size:13px; font-weight:600; }
+  .onb-pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .onb-pill { font-size:12px; padding:6px 11px; border-radius:20px; background:var(--panel-2); border:1px solid var(--border); color:var(--text); cursor:pointer; transition:.15s; }
+  .onb-pill:hover, .onb-pill.sel { border-color:var(--gcp-blue); background:rgba(66,133,244,.14); }
+
+  /* ---- AI Architect chat ---- */
+  .ai-panel { position:fixed; right:0; top:0; height:100vh; width:368px; max-width:92vw; z-index:70; display:flex; flex-direction:column; box-shadow:-12px 0 40px rgba(0,0,0,.5); animation:v2-slide-r .28s cubic-bezier(.2,.8,.2,1); border-left:1px solid var(--glass-bd); }
+  .ai-head { padding:15px 16px; display:flex; align-items:center; gap:11px; border-bottom:1px solid var(--glass-bd); flex:0 0 auto; }
+  .ai-avatar { width:34px; height:34px; border-radius:10px; background:var(--grad-gcp); display:grid; place-items:center; font-size:18px; flex:0 0 34px; }
+  .ai-title { font-size:14px; font-weight:700; } .ai-status { font-size:11px; color:#86efac; display:flex; align-items:center; gap:5px; }
+  .ai-status::before { content:''; width:7px; height:7px; border-radius:50%; background:#34d399; box-shadow:0 0 8px #34d399; }
+  .ai-x { margin-left:auto; background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; line-height:1; }
+  .ai-x:hover { color:var(--text); }
+  .ai-msgs { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .ai-msg { max-width:86%; padding:10px 13px; border-radius:14px; font-size:13px; line-height:1.55; animation:v2-rise .25s ease; }
+  .ai-msg.bot { align-self:flex-start; background:var(--panel-2); border:1px solid var(--border); border-bottom-left-radius:4px; }
+  .ai-msg.user { align-self:flex-end; background:var(--grad-gcp); color:#fff; border-bottom-right-radius:4px; }
+  .ai-msg b { color:var(--gcp-yellow); font-weight:700; }
+  .ai-quick { display:flex; flex-wrap:wrap; gap:7px; margin-top:2px; }
+  .ai-chip { font-size:12px; padding:6px 11px; border-radius:18px; background:rgba(66,133,244,.12); border:1px solid rgba(66,133,244,.4); color:#9cc3ff; cursor:pointer; transition:.15s; font-family:inherit; }
+  .ai-chip:hover { background:rgba(66,133,244,.25); color:#fff; }
+  .ai-typing { align-self:flex-start; display:flex; gap:4px; padding:12px 14px; background:var(--panel-2); border:1px solid var(--border); border-radius:14px; border-bottom-left-radius:4px; }
+  .ai-typing i { width:7px; height:7px; border-radius:50%; background:var(--muted); animation:v2-bounce 1.2s infinite; }
+  .ai-typing i:nth-child(2){ animation-delay:.15s; } .ai-typing i:nth-child(3){ animation-delay:.3s; }
+  .ai-foot { padding:12px; border-top:1px solid var(--glass-bd); flex:0 0 auto; }
+  .ai-deploy { width:100%; margin-bottom:9px; justify-content:center; }
+  .ai-inrow { display:flex; gap:8px; align-items:flex-end; }
+  .ai-input { flex:1; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; color:var(--text); padding:10px 12px; font-size:13px; font-family:inherit; outline:none; resize:none; max-height:90px; line-height:1.4; }
+  .ai-input:focus { border-color:var(--gcp-blue); }
+  .ai-send { width:38px; height:38px; flex:0 0 38px; border-radius:10px; border:none; background:var(--grad-gcp); color:#fff; font-size:16px; cursor:pointer; display:grid; place-items:center; }
+  .ai-send:disabled { opacity:.4; cursor:not-allowed; }
+
+  /* ---- Floating launcher buttons (bottom-right) ---- */
+  .v2-dock { position:absolute; right:16px; bottom:16px; z-index:6; display:flex; flex-direction:column; gap:10px; align-items:flex-end; }
+  .v2-fab { width:auto; padding:0 16px; height:46px; border-radius:24px; border:none; background:var(--glass); border:1px solid var(--glass-bd); backdrop-filter:blur(14px); color:var(--text); font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:9px; box-shadow:0 6px 20px rgba(0,0,0,.4); transition:transform .12s, border-color .15s; font-family:inherit; }
+  .v2-fab:hover { transform:translateY(-2px); border-color:var(--accent); }
+  .v2-fab.primary { background:var(--grad-gcp); border:none; box-shadow:0 8px 24px rgba(66,133,244,.45); }
+  .v2-fab .dot { width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 8px #34d399; }
+  .v2-fab .badge { background:var(--gcp-red); color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:1px 6px; }
+
+  /* ---- Simulator ---- */
+  .sim-modal { width:680px; max-width:94vw; }
+  .sim-tabs { display:inline-flex; background:var(--panel-2); border:1px solid var(--border); border-radius:9px; padding:3px; gap:2px; }
+  .sim-tab { border:none; background:none; color:var(--muted); font-size:12.5px; font-weight:600; padding:6px 14px; border-radius:7px; cursor:pointer; font-family:inherit; }
+  .sim-tab.active { background:var(--grad-gcp); color:#fff; }
+  .sim-total { font-size:34px; font-weight:800; background:var(--grad-gcp); -webkit-background-clip:text; background-clip:text; color:transparent; line-height:1.1; }
+  .sim-total-sub { font-size:12px; color:var(--muted); }
+  .sim-slider-wrap { margin:18px 0; }
+  .sim-slider-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .sim-slider-lbl { font-size:13px; font-weight:600; }
+  .sim-slider-val { font-size:13px; font-weight:700; color:var(--gcp-blue); }
+  .sim-range { -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:4px; background:var(--panel-2); outline:none; }
+  .sim-range::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--gcp-blue); cursor:pointer; box-shadow:0 0 0 4px rgba(66,133,244,.22); }
+  .sim-range::-moz-range-thumb { width:18px; height:18px; border:none; border-radius:50%; background:var(--gcp-blue); cursor:pointer; }
+  .sim-rows { margin-top:6px; }
+  .sim-row { display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--border); font-size:13px; }
+  .sim-row:last-child { border-bottom:none; }
+  .sim-row .ico { width:26px; height:26px; border-radius:7px; display:grid; place-items:center; font-size:13px; background:var(--panel-2); flex:0 0 26px; }
+  .sim-row .nm { flex:1; } .sim-row .qty { color:var(--muted); font-size:11.5px; }
+  .sim-row .amt { font-weight:700; }
+  .sim-rec { margin-top:14px; padding:12px 14px; border-radius:10px; background:rgba(251,188,5,.1); border:1px solid rgba(251,188,5,.35); color:#fde68a; font-size:12.5px; line-height:1.55; display:flex; gap:9px; }
+  .sim-empty { text-align:center; color:var(--muted); padding:30px; font-size:13px; }
+
+  /* ---- Monitoring dashboard ---- */
+  .dash-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
+  .dash-card { border-radius:12px; padding:13px; background:var(--panel-2); border:1px solid var(--border); }
+  .dash-card-top { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .dash-ico { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; font-size:14px; flex:0 0 28px; }
+  .dash-nm { font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dash-sub { font-size:10.5px; color:var(--muted); }
+  .dash-metric { margin-bottom:9px; }
+  .dash-metric-top { display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:4px; }
+  .dash-metric-top b { font-weight:700; }
+  .dash-bar { height:6px; border-radius:4px; background:var(--bg); overflow:hidden; }
+  .dash-bar i { display:block; height:100%; border-radius:4px; transition:width .5s ease; }
+  .dash-spark { display:block; width:100%; height:34px; margin-top:4px; }
+  .dash-tag { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; margin-left:auto; }
+  .dash-tag.ok { background:rgba(52,168,83,.15); color:#86efac; }
+  .dash-tag.warn { background:rgba(251,188,5,.15); color:#fde68a; }
+  .dash-tag.crit { background:rgba(234,67,53,.18); color:#fca5a5; }
+
+  /* ---- Autopilot / Telegram ---- */
+  .bot-modal { width:600px; max-width:94vw; }
+  .bot-tg { display:flex; align-items:center; gap:11px; padding:13px; border-radius:11px; background:linear-gradient(135deg,#2AABEE,#229ED9); margin-bottom:14px; }
+  .bot-tg .ico { font-size:24px; } .bot-tg b { color:#fff; } .bot-tg span { color:rgba(255,255,255,.85); font-size:12px; }
+  .bot-alert { border-radius:12px; padding:13px; margin-bottom:11px; background:var(--panel-2); border:1px solid var(--border); animation:v2-rise .25s ease; }
+  .bot-alert.crit { border-color:rgba(234,67,53,.4); }
+  .bot-alert-top { display:flex; align-items:center; gap:9px; margin-bottom:7px; }
+  .bot-alert-top .sev { font-size:11px; font-weight:700; padding:2px 8px; border-radius:8px; }
+  .sev.crit { background:rgba(234,67,53,.18); color:#fca5a5; } .sev.warn { background:rgba(251,188,5,.16); color:#fde68a; }
+  .bot-alert-msg { font-size:13px; line-height:1.5; margin-bottom:11px; }
+  .bot-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .bot-act { font-size:12.5px; font-weight:600; padding:8px 13px; border-radius:9px; border:none; cursor:pointer; font-family:inherit; transition:.15s; }
+  .bot-act.fix { background:var(--grad-gcp); color:#fff; } .bot-act.fix:hover { filter:brightness(1.08); }
+  .bot-act.self { background:var(--panel); border:1px solid var(--border); color:var(--text); } .bot-act.self:hover { border-color:var(--accent); }
+  .bot-resolved { font-size:12.5px; color:#86efac; font-weight:600; display:flex; align-items:center; gap:7px; }
+  .bot-cmd { display:flex; gap:8px; margin-top:4px; }
+  .bot-cmd input { flex:1; background:var(--panel-2); border:1px solid var(--border); border-radius:9px; color:var(--text); padding:9px 12px; font-size:13px; font-family:"SFMono-Regular",Consolas,monospace; outline:none; }
+  .bot-cmd input:focus { border-color:var(--gcp-blue); }
+  .bot-log { margin-top:12px; max-height:140px; overflow-y:auto; font-family:"SFMono-Regular",Consolas,monospace; font-size:11.5px; line-height:1.7; color:var(--muted); background:var(--bg); border-radius:9px; padding:10px 12px; border:1px solid var(--border); }
+  .bot-log .ok { color:#86efac; } .bot-log .in { color:#9cc3ff; }
+
+  /* ---- Deploy overlay ---- */
+  .dep-ov { position:fixed; inset:0; background:rgba(5,8,14,.86); backdrop-filter:blur(8px); z-index:210; display:flex; align-items:center; justify-content:center; animation:v2-fade .25s ease; }
+  .dep-card { width:440px; max-width:92vw; border-radius:18px; padding:28px 30px; animation:v2-rise .3s ease; }
+  .dep-h { font-size:19px; font-weight:800; margin-bottom:4px; display:flex; align-items:center; gap:10px; }
+  .dep-sub { font-size:13px; color:var(--muted); margin-bottom:20px; }
+  .dep-step { display:flex; align-items:center; gap:12px; padding:9px 0; font-size:13.5px; transition:.2s; }
+  .dep-step .mark { width:24px; height:24px; flex:0 0 24px; border-radius:50%; display:grid; place-items:center; font-size:12px; border:2px solid var(--border); color:var(--muted); }
+  .dep-step.run .mark { border-color:var(--gcp-blue); }
+  .dep-step.done .mark { background:var(--gcp-green); border-color:var(--gcp-green); color:#fff; }
+  .dep-step.wait { opacity:.45; }
+  .dep-spin { width:13px; height:13px; border:2px solid rgba(66,133,244,.3); border-top-color:var(--gcp-blue); border-radius:50%; animation:spin .7s linear infinite; }
+  .dep-done-ico { width:60px; height:60px; border-radius:50%; background:var(--gcp-green); display:grid; place-items:center; font-size:30px; margin:0 auto 14px; animation:v2-rise .4s ease; }
 </style>
 </head>
 <body>
@@ -2149,6 +2313,202 @@ function migrateNodes(data) {
   return{data:data,migrated:migrated,removed:removed};
 }
 
+// ============================================================
+// InfraDraw v2 — DevOps Copilot engine (GCP). Browser-only, no deps.
+// ============================================================
+
+// ---- GCP Pricing Engine (tarifas us-central1 aproximadas, USD) ----
+var GCP_PRICING = {
+  cloudRunPerMillionReq: 0.40,
+  cloudRunVcpuSec: 0.000024,
+  cloudRunGibSec:  0.0000025,
+  sqlSmallMo:      25.85,   // db-g1-small base
+  sqlStorageGbMo:  0.17,
+  memorystoreMo:   35.04,   // Memorystore Basic 1GB
+  storageGbMo:     0.020,   // GCS Standard
+  storageWritePer10k: 0.05, // Class A ops
+  storageReadPer10k:  0.004,// Class B ops
+  egressGbTier1:   0.12,    // network egress
+  lbForwardingMo:  18.26,   // 1 forwarding rule
+  lbDataGb:        0.008,
+  schedulerMo:     0.10,
+  searchMo:        18.0,
+  tasksPerMillion: 0.40,
+  emailMo:         2.0,
+  vertexPerMillionReq: 1.50
+};
+function fmtMoney(n){
+  if(n>=1000) return '$'+n.toLocaleString('en-US',{maximumFractionDigits:0});
+  if(n>=10)   return '$'+n.toFixed(0);
+  if(n>=1)    return '$'+n.toFixed(2);
+  if(n<=0)    return '$0';
+  return '$'+n.toFixed(2);
+}
+function fmtVisits(v){
+  if(v>=1000000) return (v/1000000).toFixed(v>=10000000?0:1)+'M';
+  if(v>=1000)    return Math.round(v/1000)+'k';
+  return String(v);
+}
+// Calcula coste MENSUAL en GCP a partir de la topología, tráfico y almacenamiento.
+function computeGcpCosts(nodes, visits, storageGB){
+  var P=GCP_PRICING;
+  var rows=[], recs=[];
+  var requests=visits*8;                 // ~8 peticiones por visita
+  var egressGB=visits*0.0015;            // ~1.5 MB por visita
+  var has=function(t){return nodes.some(function(n){return n.type===t;});};
+  var hasLB=has('loadbalancer');
+  function pushRow(type,icon,label,qty,amount){ if(amount<=0&&!qty)return; rows.push({type:type,icon:icon,label:label,qty:qty,amount:amount}); }
+
+  nodes.forEach(function(n){
+    var t=n.type, cfg=n.config||{};
+    if(t==='vps'){
+      var c=getPlanCost('gcloud',cfg.plan||'e2-medium');
+      pushRow(t,'🖥️','Compute Engine ('+(cfg.plan||'e2-medium').split(' ')[0]+')','24/7',c);
+    } else if(t==='frontend'||t==='backend'){
+      var share=t==='backend'?0.65:0.35;
+      var cpuSec=requests*(t==='backend'?0.25:0.12);
+      var run=requests/1e6*P.cloudRunPerMillionReq + cpuSec*P.cloudRunVcpuSec + cpuSec*0.5*P.cloudRunGibSec;
+      pushRow(t,'⚡','Cloud Run ('+(t==='backend'?'Backend':'Frontend')+')',fmtVisits(Math.round(requests*share))+' req',run*share);
+    } else if(t==='postgres'){
+      var sql=P.sqlSmallMo + 10*P.sqlStorageGbMo;
+      pushRow(t,'🐘','Cloud SQL (Postgres)','db-g1-small',sql);
+    } else if(t==='redis'){
+      pushRow(t,'🔴','Memorystore (Redis)','1 GB',P.memorystoreMo);
+    } else if(t==='storage'){
+      var writes=visits*0.3, reads=visits*5;
+      var gcs=storageGB*P.storageGbMo + (writes/10000)*P.storageWritePer10k + (reads/10000)*P.storageReadPer10k;
+      pushRow(t,'🪣','Cloud Storage (GCS)',storageGB+' GB',gcs);
+    } else if(t==='loadbalancer'){
+      pushRow(t,'⚖️','Cloud Load Balancing','1 regla',P.lbForwardingMo + egressGB*P.lbDataGb);
+    } else if(t==='ai'){
+      pushRow(t,'🤖','Vertex AI / Gemini',fmtVisits(Math.round(requests*0.1))+' inf',requests*0.1/1e6*P.vertexPerMillionReq);
+    } else if(t==='cron'){
+      pushRow(t,'⚙️','Cloud Scheduler','3 jobs',P.schedulerMo*3);
+    } else if(t==='meilisearch'){
+      pushRow(t,'🔎','Cloud Search','índice',P.searchMo);
+    } else if(t==='bullmq'){
+      pushRow(t,'📬','Cloud Tasks',fmtVisits(Math.round(requests*0.05))+' tasks',requests*0.05/1e6*P.tasksPerMillion);
+    } else if(t==='email'){
+      pushRow(t,'📨','SendGrid / SMTP','transac.',P.emailMo);
+    }
+  });
+  // Transferencia de red (egress) como línea propia.
+  if(egressGB>0) pushRow('egress','🌐','Transferencia de red (egress)',egressGB.toFixed(1)+' GB',egressGB*P.egressGbTier1);
+
+  var total=rows.reduce(function(s,r){return s+r.amount;},0);
+
+  // Recomendaciones proactivas de escalado.
+  if(visits>=500000 && !hasLB) recs.push('Con '+fmtVisits(visits)+' visitas/mes deberías añadir un Cloud Load Balancing y al menos 2 instancias de Cloud Run para repartir la carga.');
+  if(visits>=1000000 && has('postgres')) recs.push('A este volumen, habilita una réplica de lectura en Cloud SQL para no saturar la base de datos primaria.');
+  if(visits>=2000000 && !has('redis')) recs.push('Añade Memorystore (Redis) como caché: a >2M visitas reducirás drásticamente la latencia y el coste de cómputo.');
+  if(storageGB>=200) recs.push('Para '+storageGB+' GB, configura reglas de ciclo de vida hacia Nearline/Coldline y ahorra hasta un 60% en almacenamiento.');
+  if(!recs.length) recs.push('✓ Tu infraestructura está bien dimensionada para este nivel de tráfico.');
+
+  return { rows:rows, monthlyTotal:total, recommendations:recs };
+}
+
+// ---- AI Architect (fallback offline, espeja /api/ai-designer) ----
+function aiDesignLocal(prompt, answers){
+  var p=(prompt||'').toLowerCase(), a=answers||{};
+  var has=function(){for(var i=0;i<arguments.length;i++){if(p.indexOf(arguments[i])!==-1)return true;}return false;};
+  var nodes=[],conns=[],seen={};
+  function add(id,type,label){if(seen[id])return id;seen[id]=true;nodes.push({id:id,type:type,label:label});return id;}
+  function link(f,t){if(f&&t&&seen[f]&&seen[t])conns.push({from:f,to:t});}
+  add('internet','internet','Usuarios');
+  var wFe=has('frontend','next','react','vue','angular','web','spa','sitio','landing','app');
+  var wBe=has('backend','api','server','node','express','django','flask','servidor','microservicio');
+  var wDb=has('postgres','sql','mysql','database','base de datos','relacional');
+  var wNo=has('firestore','nosql','mongo');
+  var wRe=has('redis','cache','caché','sesiones');
+  var wSt=has('imagen','imágenes','image','archivo','file','subir','upload','bucket','media','video','fotos','storage');
+  var wAi=has(' ia','ai ','gemini','llm','chatbot','modelo','inteligencia','embeddings','ml');
+  var wSe=has('search','búsqueda','buscador');
+  var wQu=has('queue','cola','worker','job','cron','tarea','background');
+  var wEm=has('email','correo','mail');
+  var usersN=parseInt(String(a.users||'').replace(/[^0-9]/g,''),10)||0;
+  var highT=has('millones','millón','alto tráfico','escala','masivo')||usersN>=100000;
+  var multi=has('multirregión','multiregion','redundancia','alta disponibilidad')|| /s[ií]/.test(String(a.multiRegion||''));
+  var fe=(wFe||!wBe)?add('frontend','frontend','Cloud Run (Frontend)'):null;
+  var be=(wBe||wDb||wSt||wAi)?add('backend','backend','Cloud Run (Backend)'):null;
+  var lb=(highT||multi)?add('loadbalancer','loadbalancer','Cloud Load Balancing'):null;
+  if(lb){link('internet','loadbalancer');if(fe)link('loadbalancer','frontend');else if(be)link('loadbalancer','backend');}
+  else{if(fe)link('internet','frontend');else if(be)link('internet','backend');}
+  if(fe&&be)link('frontend','backend');
+  if(wDb){add('postgres','postgres','Cloud SQL (Postgres)');link(be||fe,'postgres');}
+  if(wNo){add('supabase','supabase','Firestore (NoSQL)');link(be||fe,'supabase');}
+  if(wRe){add('redis','redis','Cloud Memorystore');link(be||fe,'redis');}
+  if(wSt){add('storage','storage','Cloud Storage (GCS)');link(be||fe,'storage');}
+  if(wAi){add('ai','ai','Vertex AI / Gemini');link(be||fe,'ai');}
+  if(wSe){add('meilisearch','meilisearch','Cloud Search');link(be||fe,'meilisearch');}
+  if(wQu){add('bullmq','bullmq','Cloud Tasks');link(be||fe,'bullmq');}
+  if(wEm){add('email','email','SendGrid / SMTP');link(be||fe,'email');}
+  var assumptions=[];
+  if(lb)assumptions.push('Añadí Cloud Load Balancing para repartir el tráfico.');
+  if(multi)assumptions.push('Recomiendo una réplica de Cloud SQL en una 2ª región.');
+  if(!wDb&&!wNo)assumptions.push('No detecté base de datos; añade Cloud SQL o Firestore si la necesitas.');
+  var followUp=null;
+  if(!usersN&&!highT)followUp={field:'users',question:'¿Cuántos usuarios activos estimas al mes? Así dimensiono el balanceo y las réplicas.'};
+  else if((wDb||wSt)&&!multi&&!a.multiRegion)followUp={field:'multiRegion',question:'¿Necesitas redundancia multirregión (alta disponibilidad)?'};
+  var svc=nodes.filter(function(n){return n.type!=='internet';}).map(function(n){return n.label;}).join(', ');
+  return {source:'local',message:'He diseñado una arquitectura en Google Cloud con: '+(svc||'Cloud Run')+'.'+(assumptions.length?' '+assumptions.join(' '):''),followUp:followUp,assumptions:assumptions,nodes:nodes,conns:conns};
+}
+
+// ---- Monitoring simulator (datos deterministas por nodo) ----
+function hashStr(s){var h=2166136261;s=String(s);for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+var METRIC_BASE={backend:60,frontend:34,postgres:54,redis:28,vps:46,ai:68,storage:10,loadbalancer:22,meilisearch:40,bullmq:32,supabase:30,cron:18,email:8};
+function simulateMetrics(node,boostMap){
+  var base=METRIC_BASE[node.type]!==undefined?METRIC_BASE[node.type]:30;
+  var boost=(boostMap&&boostMap[node.id])||0;
+  var rnd=mulberry32(hashStr(node.id+node.type));
+  var pts=[],n=20,phase=rnd()*6.28;
+  for(var i=0;i<n;i++){
+    var wave=Math.sin(phase+i/2.4)*10;
+    var noise=(rnd()-0.5)*14;
+    var v=clamp(base+boost+wave+noise,2,99);
+    pts.push(v);
+  }
+  var cpu=Math.round(pts[pts.length-1]);
+  var ramBase=clamp(base*0.85+boost*0.6,5,96);
+  var ram=Math.round(clamp(ramBase+(rnd()-0.5)*10,5,98));
+  return {cpu:cpu,ram:ram,series:pts};
+}
+function metricLevel(v){ return v>=90?'crit':v>=70?'warn':'ok'; }
+function metricColor(v){ return v>=90?'#EA4335':v>=70?'#FBBC05':'#34A853'; }
+
+// ---- Autopilot: parser de comandos en lenguaje natural ----
+function parseInfraCommand(text){
+  var t=(text||'').toLowerCase().replace(/^\/infra\s*/,'').trim();
+  if(!t) return {action:'unknown',reply:'Escribe un comando, p.ej: "/infra levanta otra instancia de Compute Engine".'};
+  var map=[
+    {type:'vps',re:/compute engine|instancia|vm|m[áa]quina|servidor/},
+    {type:'backend',re:/backend|cloud run|api/},
+    {type:'frontend',re:/frontend|web|cliente/},
+    {type:'postgres',re:/postgres|cloud sql|base de datos|db/},
+    {type:'redis',re:/redis|memorystore|cach[eé]/},
+    {type:'storage',re:/storage|bucket|gcs|almacenamiento/},
+    {type:'loadbalancer',re:/balanceador|load balanc|lb/}
+  ];
+  var found=null;
+  for(var i=0;i<map.length;i++){ if(map[i].re.test(t)){ found=map[i].type; break; } }
+  var lbl=function(ty){return (GCP_SERVICES[ty]&&GCP_SERVICES[ty].label)||ty;};
+  if(/escala|autoescala|sube|aumenta|m[áa]s/.test(t) && /r[ée]plica|instancia|capacidad|escala/.test(t) && !found){
+    return {action:'scale',type:'backend',reply:'⚙️ Autoescalando Cloud Run: +1 instancia mínima provisionada.'};
+  }
+  if(/levanta|crea|añade|agrega|add|nueva|otra|despliega|arranca/.test(t)){
+    if(!found) found='vps';
+    return {action:'add',type:found,label:lbl(found),reply:'✅ Aprovisionando '+lbl(found)+' en GCP…'};
+  }
+  if(/elimina|borra|quita|apaga|baja/.test(t)){
+    if(!found) return {action:'unknown',reply:'¿Qué recurso quieres eliminar? Indica el servicio.'};
+    return {action:'remove',type:found,label:lbl(found),reply:'🗑️ Eliminando '+lbl(found)+'…'};
+  }
+  if(/escala|autoescala/.test(t)){
+    return {action:'scale',type:found||'backend',reply:'⚙️ Autoescalando '+lbl(found||'backend')+'…'};
+  }
+  return {action:'unknown',reply:'No reconocí la acción. Prueba con "levanta", "escala" o "elimina" + un servicio.'};
+}
+
 function App() {
   // Canvas state
   var [nodes,setNodes]=useState([]); var [areas,setAreas]=useState([]); var [notes,setNotes]=useState([]); var [conns,setConns]=useState([]);
@@ -2170,8 +2530,35 @@ function App() {
   var [saveStatus,setSaveStatus]=useState('idle');
   var [loading,setLoading]=useState(true);
   var [editingName,setEditingName]=useState(false);
+  // ---- v2 DevOps Copilot state ----
+  var [showOnboarding,setShowOnboarding]=useState(false);
+  var [onbStep,setOnbStep]=useState(1);
+  var [gcpConnected,setGcpConnected]=useState(false);
+  var [gcpProject,setGcpProject]=useState('');
+  var [gcpConnecting,setGcpConnecting]=useState(false);
+  var [tgConfig,setTgConfig]=useState({enabled:false,token:'',chatId:''});
+  var [budget,setBudget]=useState({daily:25,monthly:600});
+  var [showAI,setShowAI]=useState(false);
+  var [chat,setChat]=useState([]);
+  var [chatInput,setChatInput]=useState('');
+  var [aiThinking,setAiThinking]=useState(false);
+  var [aiAnswers,setAiAnswers]=useState({});
+  var [pendingField,setPendingField]=useState(null);
+  var [showSim,setShowSim]=useState(false);
+  var [simPeriod,setSimPeriod]=useState('month');
+  var [simVisits,setSimVisits]=useState(50000);
+  var [simStorage,setSimStorage]=useState(20);
+  var [showDash,setShowDash]=useState(false);
+  var [tick,setTick]=useState(0);
+  var [showBot,setShowBot]=useState(false);
+  var [alerts,setAlerts]=useState([]);
+  var [botLog,setBotLog]=useState([]);
+  var [botCmd,setBotCmd]=useState('');
+  var [boostMap,setBoostMap]=useState({});
+  var [deploy,setDeploy]=useState(null);
 
   // Refs
+  var aiMsgsRef=useRef(null),chatRef=useRef([]),aiAnswersRef=useRef({});
   var svgRef=useRef(null),stageRef=useRef(null),fileInputRef=useRef(null);
   var transformRef=useRef({x:0,y:0,scale:1}),spaceRef=useRef(false),inter=useRef({mode:"idle"});
   var selectedIdRef=useRef(null),selectedAreaIdRef=useRef(null),selectedNoteIdRef=useRef(null);
@@ -2190,6 +2577,7 @@ function App() {
   projectIdRef.current=projectId; projectNameRef.current=projectName;
   nodesRef.current=nodes; areasRef.current=areas; notesRef.current=notes; connsRef.current=conns;
   cloudModeRef.current=cloudMode;
+  chatRef.current=chat; aiAnswersRef.current=aiAnswers;
 
   function setTransform(next){transformRef.current=next;_setT(next);}
   function getNodeSchema(type){
@@ -2259,6 +2647,7 @@ function App() {
         }
         setProjectName(data.name||'Sin nombre');
         setLoading(false);
+        try{ if(!localStorage.getItem('infradraw_onboarded_v2')) setShowOnboarding(true); }catch(e){}
         setTimeout(function(){initialLoadRef.current=true;},400);
       }).catch(function(){setLoading(false);initialLoadRef.current=true;});
     }
@@ -2988,6 +3377,150 @@ function App() {
   function fitToScreen(){var allN=nodesRef.current,allA=areasRef.current,allNt=notesRef.current;if(!allN.length&&!allA.length&&!allNt.length){setTransform({x:0,y:0,scale:1});return;}var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;allN.forEach(function(n){minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);maxX=Math.max(maxX,n.x+NODE_W);maxY=Math.max(maxY,n.y+NODE_H);});allA.forEach(function(a){minX=Math.min(minX,a.x);minY=Math.min(minY,a.y);maxX=Math.max(maxX,a.x+a.w);maxY=Math.max(maxY,a.y+a.h);});allNt.forEach(function(nt){minX=Math.min(minX,nt.x);minY=Math.min(minY,nt.y);maxX=Math.max(maxX,nt.x+nt.w);maxY=Math.max(maxY,nt.y+nt.h);});var pad=80,rect=svgRef.current.getBoundingClientRect(),W=rect.width,H=rect.height,cW=maxX-minX,cH=maxY-minY,scale=clamp(Math.min(W/(cW+pad*2),H/(cH+pad*2)),MIN_SCALE,MAX_SCALE);setTransform({x:W/2-(minX+cW/2)*scale,y:H/2-(minY+cH/2)*scale,scale});}
   function zoomBy(f){var t=transformRef.current,rect=svgRef.current.getBoundingClientRect(),mx=rect.width/2,my=rect.height/2,ns=clamp(t.scale*f,MIN_SCALE,MAX_SCALE),k=ns/t.scale;setTransform({x:mx-(mx-t.x)*k,y:my-(my-t.y)*k,scale:ns});}
 
+  // ======== v2 DevOps Copilot logic ========
+  var lastPromptRef=useRef('');
+
+  // --- Onboarding ---
+  function finishOnboarding(){ try{localStorage.setItem('infradraw_onboarded_v2','1');}catch(e){} setShowOnboarding(false); }
+  function connectGcp(){
+    if(gcpConnecting||gcpConnected)return;
+    setGcpConnecting(true);
+    setTimeout(function(){
+      setGcpConnecting(false); setGcpConnected(true);
+      if(!gcpProject) setGcpProject('infradraw-prod-'+Math.floor(1000+Math.random()*9000));
+    },1400);
+  }
+
+  // --- AI Architect chat ---
+  function pushChat(msg){ setChat(function(p){return p.concat([msg]);}); }
+  function openAI(){
+    setShowAI(true);
+    if(chatRef.current.length===0){
+      setChat([{role:'bot',text:'¡Hola! 👋 Soy tu Arquitecto IA de Google Cloud. Cuéntame qué quieres construir y dibujaré la infraestructura por ti.',quick:['SaaS con Next.js, Postgres e imágenes','API en Node con Redis y colas','Chatbot con IA y base de datos']}]);
+    }
+  }
+  function applyAITopology(topo){
+    if(!topo||!topo.nodes||!topo.nodes.length)return;
+    pushHistory();
+    if(cloudModeRef.current!=='gcp')setCloudMode('gcp');
+    var tierOf={internet:0,cloudflare:0,loadbalancer:1,frontend:2,backend:3};
+    var tiers={},idMap={};
+    topo.nodes.forEach(function(tn){var tr=tierOf[tn.type]!==undefined?tierOf[tn.type]:4;(tiers[tr]=tiers[tr]||[]).push(tn);});
+    var newNodes=[],startY=-280,rowGap=NODE_H+78,colGap=NODE_W+48;
+    Object.keys(tiers).sort(function(a,b){return a-b;}).forEach(function(k){
+      var arr=tiers[k],tr=parseInt(k,10),rowW=arr.length*NODE_W+(arr.length-1)*48,startX=-rowW/2;
+      arr.forEach(function(tn,i){
+        var nid=uid(); idMap[tn.id]=nid;
+        var svc=GCP_SERVICES[tn.type]||SERVICES[tn.type]||{label:tn.type};
+        var cfg={}; if(tn.type==='vps')cfg={provider:'gcloud',plan:'e2-medium',region:'us-central1 — Iowa'};
+        newNodes.push({id:nid,type:tn.type,x:startX+i*colGap,y:startY+tr*rowGap,label:tn.label||svc.label,config:cfg});
+      });
+    });
+    var newConns=(topo.conns||[]).map(function(c){var f=idMap[c.from],t=idMap[c.to];if(!f||!t)return null;return{id:uid(),from:f,to:t};}).filter(Boolean);
+    setNodes(newNodes);setConns(newConns);setAreas([]);clearSelection();
+    setTimeout(fitToScreen,80);
+  }
+  function handleAIResult(out,basePrompt){
+    setAiThinking(false);
+    if(!out||!out.nodes||!out.nodes.length){ pushChat({role:'bot',text:'Hmm, no pude generar la arquitectura. Reformula tu descripción e inténtalo de nuevo.'}); return; }
+    applyAITopology(out);
+    var msg={role:'bot',text:out.message};
+    if(out.followUp&&out.followUp.question){
+      msg.question=out.followUp.question;
+      setPendingField(out.followUp.field);
+      if(out.followUp.field==='users')msg.quick=['Unos 10.000','Unos 100.000','Más de 1 millón'];
+      else if(out.followUp.field==='multiRegion')msg.quick=['Sí, multirregión','No, una sola región'];
+    } else { setPendingField(null); }
+    pushChat(msg);
+  }
+  function sendChat(textOverride){
+    var text=(textOverride!==undefined?textOverride:chatInput).trim();
+    if(!text||aiThinking)return;
+    pushChat({role:'user',text:text});
+    setChatInput('');
+    var answers=Object.assign({},aiAnswersRef.current);
+    var basePrompt;
+    if(pendingField){ answers[pendingField]=text; setAiAnswers(answers); var pf=pendingField; setPendingField(null); basePrompt=lastPromptRef.current||text; }
+    else { lastPromptRef.current=text; basePrompt=text; }
+    setAiThinking(true);
+    var done=false, finish=function(out){ if(done)return; done=true; handleAIResult(out,basePrompt); };
+    var timeout=setTimeout(function(){ finish(aiDesignLocal(basePrompt,answers)); },4500);
+    fetch('/api/ai-designer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:basePrompt,answers:answers})})
+      .then(function(r){return r.json();})
+      .then(function(out){ clearTimeout(timeout); setTimeout(function(){ finish(out); }, 600); })
+      .catch(function(){ clearTimeout(timeout); finish(aiDesignLocal(basePrompt,answers)); });
+  }
+  useEffect(function(){ var el=aiMsgsRef.current; if(el)el.scrollTop=el.scrollHeight; },[chat,aiThinking,showAI]);
+
+  // --- Deploy to GCP (simulado) ---
+  function runDeploy(){
+    if(!nodesRef.current.length){ alert('Añade servicios al canvas antes de desplegar en GCP.'); return; }
+    var steps=['Validando arquitectura','Generando Terraform para GCP','Aprovisionando recursos en '+(gcpProject||'tu proyecto GCP'),'Configurando red VPC y healthchecks','Desplegando servicios en Cloud Run'];
+    setDeploy({step:0,steps:steps,done:false});
+    var i=0;
+    (function next(){
+      setTimeout(function(){
+        i++;
+        if(i>=steps.length){ setDeploy({step:steps.length,steps:steps,done:true}); return; }
+        setDeploy({step:i,steps:steps,done:false}); next();
+      },850+Math.random()*550);
+    })();
+  }
+
+  // --- Monitoring tick (solo cuando el dashboard o el bot están abiertos) ---
+  useEffect(function(){
+    if(!showDash&&!showBot&&!tgConfig.enabled)return;
+    var iv=setInterval(function(){ setTick(function(t){return t+1;}); },2600);
+    return function(){clearInterval(iv);};
+  },[showDash,showBot,tgConfig.enabled]);
+
+  // --- Autopilot: generar alertas cuando un recurso supera el 90% ---
+  useEffect(function(){
+    if(!tgConfig.enabled)return;
+    nodesRef.current.filter(function(n){return n.type!=='internet';}).forEach(function(n){
+      var m=simulateMetrics(n,boostMap,tick);
+      if(m.cpu>=90){
+        setAlerts(function(p){
+          if(p.some(function(a){return a.nodeId===n.id&&a.status==='active';}))return p;
+          return p.concat([{id:uid(),nodeId:n.id,nodeLabel:n.label,type:n.type,cpu:m.cpu,status:'active',sev:'crit',msg:'⚠️ La CPU de '+n.label+' superó el '+m.cpu+'% en Cloud Run.'}]);
+        });
+      }
+    });
+  },[tick,tgConfig.enabled]);
+
+  function pushBotLog(cls,text){ setBotLog(function(p){return p.concat([{cls:cls,text:text}]).slice(-60);}); }
+  function fixAlert(a){
+    setBoostMap(function(p){var n=Object.assign({},p);n[a.nodeId]=-40;return n;});
+    setAlerts(function(p){return p.map(function(x){return x.id===a.id?Object.assign({},x,{status:'resolved',resolution:'auto'}):x;});});
+    pushBotLog('ok','✅ Autoescalado en '+a.nodeLabel+': +1 instancia Cloud Run, CPU normalizada.');
+  }
+  function selfAlert(a){
+    setAlerts(function(p){return p.map(function(x){return x.id===a.id?Object.assign({},x,{status:'resolved',resolution:'manual'}):x;});});
+    pushBotLog('in','👤 "'+a.nodeLabel+'" marcado para resolución manual.');
+  }
+  function addCommandNode(type){
+    if(cloudModeRef.current!=='gcp')setCloudMode('gcp');
+    if(!svgRef.current)return;
+    var rect=svgRef.current.getBoundingClientRect(),w=screenToWorld(rect.left+rect.width/2,rect.top+rect.height/2);
+    addNodeAt(type,w.x+(Math.random()-.5)*140,w.y+(Math.random()-.5)*140);
+  }
+  function removeCommandNode(type){
+    var list=nodesRef.current.filter(function(x){return x.type===type;});
+    var n=list[list.length-1];
+    if(n)deleteNode(n.id); else pushBotLog('in','No hay ningún '+((GCP_SERVICES[type]&&GCP_SERVICES[type].label)||type)+' para eliminar.');
+  }
+  function runBotCommand(){
+    var t=botCmd.trim(); if(!t)return;
+    pushBotLog('in','> '+t); setBotCmd('');
+    var res=parseInfraCommand(t);
+    setTimeout(function(){
+      pushBotLog('ok',res.reply);
+      if(res.action==='add'&&res.type){ addCommandNode(res.type); pushBotLog('ok','🎨 '+res.label+' añadido al canvas.'); }
+      else if(res.action==='remove'&&res.type){ removeCommandNode(res.type); }
+      else if(res.action==='scale'){ var be=nodesRef.current.filter(function(n){return n.type===(res.type||'backend');})[0]; if(be){ setBoostMap(function(p){var n=Object.assign({},p);n[be.id]=-32;return n;}); pushBotLog('ok','📉 Carga estabilizada tras autoescalar.'); } }
+    },650);
+  }
+
   // ======== RENDER ========
   var totalCost=nodes.filter(function(n){return n.type==='vps';}).reduce(function(sum,v){return sum+getPlanCost((v.config&&v.config.provider)||'hetzner',(v.config&&v.config.plan)||'cx31');},0);
 
@@ -3230,8 +3763,238 @@ function App() {
   var fileInput=h('input',{type:'file',accept:'.json,application/json',ref:fileInputRef,style:{display:'none'},onChange:onFileChange});
   var loadingOverlay=loading?h('div',{className:'loading-overlay'},[h('div',{key:'sp',className:'spinner'}),h('div',{key:'tx',style:{color:'var(--muted)',fontSize:14}},'Cargando proyecto…')]):null;
 
-  var stage=h('div',{className:'stage',ref:stageRef,onDrop,onDragOver},[svg,toolbar,connectBadge,emptyHint,hints,fileInput,loadingOverlay]);
-  return h('div',{className:'app'},[sidebar,stage,configPanel,validationModal,migrationModal]);
+  // ======== v2 DevOps Copilot UI ========
+  function metricBar(label,val){
+    return h('div',{className:'dash-metric'},[
+      h('div',{key:'t',className:'dash-metric-top'},[h('span',{key:'l'},label),h('b',{key:'v',style:{color:metricColor(val)}},val+'%')]),
+      h('div',{key:'b',className:'dash-bar'},h('i',{style:{width:val+'%',background:metricColor(val)}}))
+    ]);
+  }
+  function sparkPath(series,w,hh){
+    var n=series.length;
+    var pts=series.map(function(v,i){return [(i/(n-1))*w, hh-(clamp(v,0,100)/100)*hh];});
+    var line='M'+pts.map(function(p){return p[0].toFixed(1)+' '+p[1].toFixed(1);}).join(' L');
+    return {line:line, area:line+' L'+w+' '+hh+' L0 '+hh+' Z'};
+  }
+
+  // ---- Onboarding wizard ----
+  function renderOnboarding(){
+    if(!showOnboarding)return null;
+    var meta=[{lbl:'Conectar GCP'},{lbl:'Arquitecto IA'},{lbl:'Autopilot'},{lbl:'Presupuesto'}];
+    var bars=meta.map(function(s,i){var st=(i+1<onbStep)?'done':((i+1===onbStep)?'active':'');return h('div',{key:i,className:'onb-step '+st},[h('div',{key:'b',className:'onb-bar'},h('i')),h('div',{key:'l',className:'onb-step-lbl'},(i+1)+'. '+s.lbl)]);});
+    var body;
+    if(onbStep===1){
+      body=h('div',{key:'s1'},[
+        h('div',{key:'i',className:'onb-icon'},'☁️'),
+        h('div',{key:'h',className:'onb-h'},'Conecta tu cuenta de Google Cloud'),
+        h('div',{key:'p',className:'onb-p'},'InfraDraw desplegará y monitorizará tu infraestructura directamente en GCP. Autoriza el acceso y elige tu Project ID.'),
+        h('div',{key:'sp',style:{height:16}}),
+        gcpConnected
+          ? h('div',{key:'c'},[
+              h('div',{key:'ok',className:'onb-connected'},'✓ Conectado a Google Cloud'),
+              h('div',{key:'f',className:'onb-field',style:{marginTop:14}},[h('label',{key:'l'},'Project ID de GCP'),h('input',{key:'i',className:'onb-input',value:gcpProject,onChange:function(e){setGcpProject(e.target.value);}})])
+            ])
+          : h('button',{key:'g',className:'onb-google',onClick:connectGcp,disabled:gcpConnecting},[
+              gcpConnecting?h('span',{key:'s',className:'dep-spin'}):h('span',{key:'g',style:{fontWeight:800,fontSize:16,color:'#4285F4'}},'G'),
+              gcpConnecting?'Conectando con Google…':'Continuar con Google'
+            ])
+      ]);
+    } else if(onbStep===2){
+      body=h('div',{key:'s2'},[
+        h('div',{key:'i',className:'onb-icon'},'🤖'),
+        h('div',{key:'h',className:'onb-h'},'Diseña con el Arquitecto IA'),
+        h('div',{key:'p',className:'onb-p'},'Describe tu proyecto en lenguaje natural y Gemini dibujará tus servicios de GCP (Cloud Run, Cloud SQL, Cloud Storage…) con sus conexiones, refinando el diseño con preguntas.'),
+        h('div',{key:'demo',style:{marginTop:16,padding:'12px 14px',borderRadius:10,background:'var(--panel-2)',border:'1px solid var(--border)',fontSize:13,color:'var(--muted)'}},'💬 “Tengo un SaaS con frontend en Next.js, base de datos Postgres y necesito almacenar imágenes”')
+      ]);
+    } else if(onbStep===3){
+      body=h('div',{key:'s3'},[
+        h('div',{key:'i',className:'onb-icon'},'📲'),
+        h('div',{key:'h',className:'onb-h'},'Configura el Autopilot (Telegram)'),
+        h('div',{key:'p',className:'onb-p'},'Recibe alertas interactivas y controla tu infraestructura por Telegram en lenguaje natural. Puedes configurarlo más tarde.'),
+        h('label',{key:'t',className:'cfg-check',style:{margin:'14px 0'}},[h('input',{key:'i',type:'checkbox',checked:tgConfig.enabled,onChange:function(e){setTgConfig(Object.assign({},tgConfig,{enabled:e.target.checked}));}}),'Activar bot de Telegram']),
+        h('div',{key:'f1',className:'onb-field'},[h('label',{key:'l'},'Bot Token'),h('input',{key:'i',className:'onb-input',placeholder:'123456:ABC-DEF…',value:tgConfig.token,onChange:function(e){setTgConfig(Object.assign({},tgConfig,{token:e.target.value}));}})]),
+        h('div',{key:'f2',className:'onb-field'},[h('label',{key:'l'},'Chat ID'),h('input',{key:'i',className:'onb-input',placeholder:'@tu_usuario',value:tgConfig.chatId,onChange:function(e){setTgConfig(Object.assign({},tgConfig,{chatId:e.target.value}));}})])
+      ]);
+    } else {
+      body=h('div',{key:'s4'},[
+        h('div',{key:'i',className:'onb-icon'},'💰'),
+        h('div',{key:'h',className:'onb-h'},'Define tu cuota de facturación'),
+        h('div',{key:'p',className:'onb-p'},'Te avisaremos antes de superar tu presupuesto de GCP.'),
+        h('div',{key:'f1',className:'onb-field',style:{marginTop:14}},[h('label',{key:'l'},'Presupuesto diario (USD)'),h('input',{key:'i',className:'onb-input',type:'number',value:budget.daily,onChange:function(e){setBudget(Object.assign({},budget,{daily:Number(e.target.value)}));}})]),
+        h('div',{key:'f2',className:'onb-field'},[h('label',{key:'l'},'Presupuesto mensual (USD)'),h('input',{key:'i',className:'onb-input',type:'number',value:budget.monthly,onChange:function(e){setBudget(Object.assign({},budget,{monthly:Number(e.target.value)}));}})])
+      ]);
+    }
+    var isLast=onbStep===4;
+    var foot=h('div',{key:'foot',className:'onb-foot'},[
+      h('button',{key:'skip',className:'onb-skip',onClick:finishOnboarding},'Omitir configuración por ahora'),
+      h('div',{key:'sp',className:'onb-spacer'}),
+      onbStep>1?h('button',{key:'b',className:'v2-btn ghost',onClick:function(){setOnbStep(onbStep-1);}},'Atrás'):null,
+      h('button',{key:'n',className:'v2-btn',onClick:function(){ if(isLast){ finishOnboarding(); setCloudMode('gcp'); openAI(); } else setOnbStep(onbStep+1); }}, isLast?'Finalizar y empezar':'Siguiente →')
+    ]);
+    return h('div',{className:'onb-ov'},h('div',{className:'onb-card glass'},[
+      h('div',{key:'top',className:'onb-top'},[h('div',{key:'k',className:'onb-kicker'},'InfraDraw · DevOps Copilot'),h('div',{key:'p',className:'onb-p',style:{marginTop:6}},'Configura tu copilot de Google Cloud en 4 pasos.')]),
+      h('div',{key:'steps',className:'onb-steps'},bars),
+      h('div',{key:'body',className:'onb-body'},body),
+      foot
+    ]));
+  }
+
+  // ---- AI Architect chat ----
+  function renderAIPanel(){
+    if(!showAI)return null;
+    var msgs=chat.map(function(m,i){
+      var inner=[h('div',{key:'t',className:'ai-msg '+m.role},m.text)];
+      if(m.question)inner.push(h('div',{key:'q',className:'ai-msg bot'},m.question));
+      if(m.quick&&m.quick.length)inner.push(h('div',{key:'k',className:'ai-quick'},m.quick.map(function(q,qi){return h('button',{key:qi,className:'ai-chip',onClick:function(){sendChat(q);}},q);})));
+      return h('div',{key:i,style:{display:'flex',flexDirection:'column',gap:8}},inner);
+    });
+    if(aiThinking)msgs.push(h('div',{key:'typing',className:'ai-typing'},[h('i',{key:1}),h('i',{key:2}),h('i',{key:3})]));
+    return h('div',{className:'ai-panel glass',onPointerDown:function(e){e.stopPropagation();}},[
+      h('div',{key:'head',className:'ai-head'},[
+        h('div',{key:'a',className:'ai-avatar'},'🤖'),
+        h('div',{key:'t'},[h('div',{key:'1',className:'ai-title'},'Arquitecto IA'),h('div',{key:'2',className:'ai-status'},'Gemini · en línea')]),
+        h('button',{key:'x',className:'ai-x',onClick:function(){setShowAI(false);}},'×')
+      ]),
+      h('div',{key:'msgs',className:'ai-msgs',ref:aiMsgsRef},msgs),
+      h('div',{key:'foot',className:'ai-foot'},[
+        h('button',{key:'dep',className:'v2-btn ai-deploy',onClick:runDeploy},'🚀 Desplegar en GCP'),
+        h('div',{key:'in',className:'ai-inrow'},[
+          h('textarea',{key:'ta',className:'ai-input',rows:1,placeholder:'Describe tu infraestructura…',value:chatInput,onChange:function(e){setChatInput(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}}),
+          h('button',{key:'send',className:'ai-send',disabled:aiThinking||!chatInput.trim(),onClick:function(){sendChat();}},'➤')
+        ])
+      ])
+    ]);
+  }
+
+  // ---- Cost simulator ----
+  function renderSimulator(){
+    if(!showSim)return null;
+    var liveNodes=nodes.filter(function(n){return n.type!=='internet';});
+    var costs=computeGcpCosts(liveNodes,simVisits,simStorage);
+    var factor=simPeriod==='day'?(1/30.4):(simPeriod==='year'?12:1);
+    var periodLbl=simPeriod==='day'?'/día':(simPeriod==='year'?'/año':'/mes');
+    var rows=costs.rows.length?costs.rows.map(function(r,i){return h('div',{key:i,className:'sim-row'},[h('div',{key:'i',className:'ico'},r.icon),h('div',{key:'n',className:'nm'},[r.label,r.qty?h('div',{key:'q',className:'qty'},r.qty):null]),h('div',{key:'a',className:'amt'},fmtMoney(r.amount*factor)+periodLbl)]);}):[h('div',{key:'e',className:'sim-empty'},'Añade servicios de GCP al canvas o genera una arquitectura con el Arquitecto IA para estimar costes.')];
+    var recs=costs.recommendations.map(function(rc,i){return h('div',{key:i,className:'sim-rec'},[h('span',{key:'i'},'💡'),h('span',{key:'t'},rc)]);});
+    var tabs=[['day','Diario'],['month','Mensual'],['year','Anual']].map(function(p){return h('button',{key:p[0],className:'sim-tab'+(simPeriod===p[0]?' active':''),onClick:function(){setSimPeriod(p[0]);}},p[1]);});
+    return h('div',{className:'modal-ov',onClick:function(){setShowSim(false);}},
+      h('div',{className:'modal sim-modal',onClick:function(e){e.stopPropagation();}},[
+        h('div',{key:'h',className:'modal-head',style:{justifyContent:'space-between',gap:10}},[h('div',{key:'t',className:'modal-title'},'🧮 Simulador de costes GCP'),h('div',{key:'tabs',className:'sim-tabs'},tabs)]),
+        h('div',{key:'b',className:'modal-body'},[
+          h('div',{key:'tot',style:{display:'flex',alignItems:'flex-end',gap:10,marginBottom:4}},[h('div',{key:'n',className:'sim-total'},fmtMoney(costs.monthlyTotal*factor)),h('div',{key:'s',className:'sim-total-sub'},'estimado'+periodLbl+' · '+liveNodes.length+' servicios')]),
+          h('div',{key:'sl1',className:'sim-slider-wrap'},[
+            h('div',{key:'t',className:'sim-slider-top'},[h('div',{key:'l',className:'sim-slider-lbl'},'📈 Tráfico mensual'),h('div',{key:'v',className:'sim-slider-val'},fmtVisits(simVisits)+' visitas')]),
+            h('input',{key:'r',className:'sim-range',type:'range',min:10000,max:5000000,step:10000,value:simVisits,onChange:function(e){setSimVisits(Number(e.target.value));}})
+          ]),
+          h('div',{key:'sl2',className:'sim-slider-wrap'},[
+            h('div',{key:'t',className:'sim-slider-top'},[h('div',{key:'l',className:'sim-slider-lbl'},'🪣 Almacenamiento'),h('div',{key:'v',className:'sim-slider-val'},simStorage+' GB')]),
+            h('input',{key:'r',className:'sim-range',type:'range',min:1,max:1000,step:1,value:simStorage,onChange:function(e){setSimStorage(Number(e.target.value));}})
+          ]),
+          h('div',{key:'rows',className:'sim-rows'},rows),
+          recs.length?h('div',{key:'rec'},recs):null
+        ])
+      ]));
+  }
+
+  // ---- Live monitoring dashboard ----
+  function renderDashboard(){
+    if(!showDash)return null;
+    var run=nodes.filter(function(n){return n.type!=='internet';});
+    var cards=run.length?run.map(function(n){
+      var m=simulateMetrics(n,boostMap,tick);
+      var def=GCP_SERVICES[n.type]||SERVICES[n.type]||{icon:'⚙️',color:'#4285F4',label:n.type};
+      var lvl=metricLevel(m.cpu),sp=sparkPath(m.series,200,34);
+      return h('div',{key:n.id,className:'dash-card'},[
+        h('div',{key:'top',className:'dash-card-top'},[h('div',{key:'i',className:'dash-ico',style:{background:def.color+'33'}},def.icon),h('div',{key:'n',style:{overflow:'hidden',flex:1}},[h('div',{key:'a',className:'dash-nm'},n.label),h('div',{key:'b',className:'dash-sub'},def.label)]),h('div',{key:'t',className:'dash-tag '+lvl},lvl==='crit'?'CRÍTICO':(lvl==='warn'?'ALTO':'OK'))]),
+        metricBar('CPU',m.cpu),
+        metricBar('RAM',m.ram),
+        h('svg',{key:'sp',className:'dash-spark',viewBox:'0 0 200 34',preserveAspectRatio:'none'},[h('path',{key:'a',d:sp.area,fill:metricColor(m.cpu)+'22'}),h('path',{key:'l',d:sp.line,fill:'none',stroke:metricColor(m.cpu),strokeWidth:1.6})])
+      ]);
+    }):[h('div',{key:'e',className:'sim-empty'},'No hay recursos en ejecución. Genera o dibuja una arquitectura para ver métricas en vivo.')];
+    return h('div',{className:'modal-ov',onClick:function(){setShowDash(false);}},
+      h('div',{className:'modal',style:{width:780,maxWidth:'94vw'},onClick:function(e){e.stopPropagation();}},[
+        h('div',{key:'h',className:'modal-head',style:{justifyContent:'space-between'}},[h('div',{key:'t',className:'modal-title'},'📊 Monitorización en vivo · GCP'),h('div',{key:'s',style:{fontSize:11,color:'#86efac',fontWeight:600}},'● actualizando cada 2.6s')]),
+        h('div',{key:'b',className:'modal-body'},h('div',{className:'dash-grid'},cards))
+      ]));
+  }
+
+  // ---- Autopilot / Telegram bot ----
+  function renderBot(){
+    if(!showBot)return null;
+    var active=alerts.filter(function(a){return a.status==='active';});
+    var resolved=alerts.filter(function(a){return a.status==='resolved';});
+    var alertEls=active.length?active.map(function(a){
+      return h('div',{key:a.id,className:'bot-alert crit'},[
+        h('div',{key:'top',className:'bot-alert-top'},[h('span',{key:'s',className:'sev crit'},'CRÍTICO'),h('b',{key:'n',style:{fontSize:13}},a.nodeLabel)]),
+        h('div',{key:'m',className:'bot-alert-msg'},a.msg),
+        h('div',{key:'a',className:'bot-actions'},[
+          h('button',{key:'fix',className:'bot-act fix',onClick:function(){fixAlert(a);}},'⚡ Ejecutar Solución (autoescalar)'),
+          h('button',{key:'self',className:'bot-act self',onClick:function(){selfAlert(a);}},'Hacerlo yo mismo')
+        ])
+      ]);
+    }):[h('div',{key:'none',style:{fontSize:13,color:'var(--muted)',padding:'10px 2px'}}, tgConfig.enabled?'✓ Sin alertas activas. El Autopilot vigila tus recursos.':'Activa el Autopilot para empezar a recibir alertas.')];
+    var resolvedEls=resolved.slice(-3).map(function(a){return h('div',{key:a.id,className:'bot-resolved',style:{padding:'3px 0'}},'✓ '+a.nodeLabel+' — '+(a.resolution==='auto'?'resuelto por Autopilot':'gestionado manualmente'));});
+    var logEls=botLog.length?botLog.map(function(l,i){return h('div',{key:i,className:l.cls},l.text);}):[h('div',{key:'e'},'$ esperando comandos…')];
+    return h('div',{className:'modal-ov',onClick:function(){setShowBot(false);}},
+      h('div',{className:'modal bot-modal',onClick:function(e){e.stopPropagation();}},[
+        h('div',{key:'h',className:'modal-head'},h('div',{className:'modal-title'},'🚁 Autopilot · Telegram Bot')),
+        h('div',{key:'b',className:'modal-body'},[
+          h('div',{key:'tg',className:'bot-tg'},[
+            h('span',{key:'i',className:'ico'},'📲'),
+            h('div',{key:'d'},[h('b',{key:'a'},tgConfig.enabled?'Autopilot ACTIVO':'Autopilot inactivo'),h('div',{key:'b'},h('span',{},tgConfig.enabled?('Enviando alertas a '+(tgConfig.chatId||'tu chat')):'Actívalo para recibir alertas en Telegram'))]),
+            h('label',{key:'t',className:'toggle',style:{marginLeft:'auto'}},[h('input',{key:'i',type:'checkbox',checked:tgConfig.enabled,onChange:function(e){setTgConfig(Object.assign({},tgConfig,{enabled:e.target.checked}));}}),h('span',{key:'tr',className:'track'},h('span',{className:'thumb'}))])
+          ]),
+          h('div',{key:'at',className:'val-sec-title'},'Alertas interactivas'),
+          h('div',{key:'al'},alertEls),
+          resolvedEls.length?h('div',{key:'rs',style:{marginTop:6}},resolvedEls):null,
+          h('div',{key:'ct',className:'val-sec-title',style:{marginTop:14}},'Control por lenguaje natural'),
+          h('div',{key:'cmd',className:'bot-cmd'},[
+            h('input',{key:'i',value:botCmd,placeholder:'/infra levanta otra instancia de Compute Engine',onChange:function(e){setBotCmd(e.target.value);},onKeyDown:function(e){if(e.key==='Enter')runBotCommand();}}),
+            h('button',{key:'b',className:'v2-btn',onClick:runBotCommand},'Enviar')
+          ]),
+          h('div',{key:'log',className:'bot-log'},logEls)
+        ])
+      ]));
+  }
+
+  // ---- Deploy overlay ----
+  function renderDeploy(){
+    if(!deploy)return null;
+    if(deploy.done){
+      return h('div',{className:'dep-ov'},h('div',{className:'dep-card glass'},[
+        h('div',{key:'i',className:'dep-done-ico'},'✓'),
+        h('div',{key:'h',className:'dep-h',style:{justifyContent:'center'}},'¡Desplegado en GCP!'),
+        h('div',{key:'s',className:'dep-sub',style:{textAlign:'center'}},'Tu infraestructura está en producción en '+(gcpProject||'tu proyecto GCP')+'.'),
+        h('button',{key:'b',className:'v2-btn',style:{width:'100%',justifyContent:'center'},onClick:function(){setDeploy(null);setShowDash(true);}},'Ver monitorización')
+      ]));
+    }
+    var steps=deploy.steps.map(function(s,i){
+      var st=(i<deploy.step)?'done':((i===deploy.step)?'run':'wait');
+      var mark=st==='done'?h('span',{className:'mark'},'✓'):(st==='run'?h('span',{className:'mark'},h('span',{className:'dep-spin'})):h('span',{className:'mark'},String(i+1)));
+      return h('div',{key:i,className:'dep-step '+st},[mark,h('span',{key:'l'},s)]);
+    });
+    return h('div',{className:'dep-ov'},h('div',{className:'dep-card glass'},[
+      h('div',{key:'h',className:'dep-h'},[h('span',{key:'e'},'🚀'),'Desplegando en Google Cloud']),
+      h('div',{key:'s',className:'dep-sub'},'No cierres esta ventana mientras aprovisionamos los recursos.'),
+      h('div',{key:'steps'},steps)
+    ]));
+  }
+
+  var activeAlertCount=alerts.filter(function(a){return a.status==='active';}).length;
+  var v2Dock=h('div',{className:'v2-dock'},[
+    h('button',{key:'sim',className:'v2-fab',onClick:function(){setShowSim(true);}},['🧮','Simulador']),
+    h('button',{key:'dash',className:'v2-fab',onClick:function(){setShowDash(true);}},[h('span',{key:'d',className:'dot'}),'Monitor']),
+    h('button',{key:'bot',className:'v2-fab',onClick:function(){setShowBot(true);}},['🚁','Autopilot',activeAlertCount?h('span',{key:'b',className:'badge'},String(activeAlertCount)):null]),
+    h('button',{key:'ai',className:'v2-fab primary',onClick:openAI},['🤖','Arquitecto IA'])
+  ]);
+  var onboardingEl=renderOnboarding();
+  var aiPanelEl=renderAIPanel();
+  var simEl=renderSimulator();
+  var dashEl=renderDashboard();
+  var botEl=renderBot();
+  var deployEl=renderDeploy();
+
+  var stage=h('div',{className:'stage',ref:stageRef,onDrop,onDragOver},[svg,toolbar,connectBadge,emptyHint,hints,fileInput,v2Dock,loadingOverlay]);
+  return h('div',{className:'app'},[sidebar,stage,configPanel,validationModal,migrationModal,onboardingEl,aiPanelEl,simEl,dashEl,botEl,deployEl]);
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(App));

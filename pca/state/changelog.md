@@ -1,6 +1,21 @@
 # Changelog
 
-## [Unreleased] - 2026-06-14
+## [2.0.0] - 2026-06-20
+
+### Added
+- Evolución completa a InfraDraw v2 (DevOps Copilot en GCP) enfocada 100% en la interfaz visual y simplificada.
+- Wizard de onboarding interactivo de 4 pasos con opción de omisión en el canvas web.
+- Gemini AI Architect Chat en el canvas para generar y modificar topologías en GCP con lenguaje natural, y botón de despliegue simulado.
+- Panel de Calculadora y Simulador de Costes GCP con sliders dinámicos de tráfico y almacenamiento y proyecciones a 12 meses.
+- Live Dashboard de monitoreo simulado de CPU/RAM de servicios de GCP.
+- DevOps Bot de Telegram (Autopilot) simulado con alertas interactivas de auto-remediación y parser de comandos de infraestructura por texto.
+- API de diseño inteligente `/api/ai-designer.js` integrada con Gemini API (con fallback de mock por palabras clave).
+- Migración del backend a un servidor Express integrado en `server.js` y `package.json` para despliegue en Railway.
+
+### Removed
+- Carpeta `cli/` que contenía el antiguo subproyecto de terminal en desuso.
+
+## [1.1.0] - 2026-06-14
 
 ### Added
 - Superadmin Dashboard (`/admin.html`) protegido bajo Vercel KV y Firebase Auth, permitiendo la visualización de usuarios, modificación de planes (FREE/PRO) y bloqueo de cuentas (ban) con seguridad estricta para la cuenta maestra.

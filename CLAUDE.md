@@ -6,48 +6,33 @@ This document outlines command references, project structure, and key coding con
 
 ## 🚀 Key Commands
 
-### 1. Visual Web Canvas
-The frontend is a vanilla HTML/CSS/JS application.
-*   **Run local dev server (Vercel Dev):**
+### Visual Web Canvas (InfraDraw v2 — DevOps Copilot)
+The product is a single-page **vanilla HTML/CSS/JS** application. The canvas is a React 18 SPA loaded from CDN with **no build step and no JSX** (see constraint #1). Backend logic runs on an Express server (`server.js`) in a single port configuration for Railway.
+*   **Run local dev server:**
     ```bash
-    npx vercel dev --listen 3100
+    npm start
     ```
 *   **Static Entry points:** [index.html](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/index.html) and [canvas.html](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/canvas.html).
+*   **Syntax-check the inline canvas script** (the app is auth-gated, so it can't be loaded headless — validate JS by extracting the inline `<script>` and running `node --check`).
 
-### 2. InfraDraw CLI (`cli/`)
-Headless Node.js subproject that parses topology JSON configurations into IaC files.
-*   **Setup / Install dependencies globally:**
-    ```bash
-    cd cli && npm install && npm link
-    ```
-*   **Create a new topology interactively:**
-    ```bash
-    infradraw create [outputFile.json]
-    ```
-*   **Validate a topology JSON:**
-    ```bash
-    infradraw validate <file.json>
-    ```
-*   **Compile a topology JSON to deployment files:**
-    ```bash
-    infradraw compile <file.json> [outDir]
-    ```
+> The legacy headless `cli/` subproject was **removed in v2**. The end user is a non-technical operator, not a programmer, so the IaC-compiling CLI was dead weight. `getPlanRAM` / `getPlanCost` now live directly in [canvas.html](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/canvas.html).
 
 ---
 
 ## 📂 Codebase Structure
 
-*   [canvas.html](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/canvas.html) — Core interactive SVG-based drag & drop editor UI.
-*   [cli/bin/infradraw.js](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/cli/bin/infradraw.js) — Entry point for CLI. Parses arguments and launches prompts/compilers.
-*   [cli/src/compiler.js](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/cli/src/compiler.js) — Core compiler logic. Extracted from the web canvas to make it 100% headless and testable.
-*   [cli/examples/basic-infra.json](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/cli/examples/basic-infra.json) — Reference JSON schema for architectures.
+*   [canvas.html](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/canvas.html) — Core SVG drag & drop editor **plus** all v2 Copilot UI: onboarding wizard, AI Architect chat, cost simulator, live monitoring dashboard, and Telegram Autopilot. Single-file React-no-JSX SPA.
+*   `api/ai-designer.js` — Serverless endpoint. Turns a natural-language prompt into a structured GCP topology (`nodes` + `conns`). Calls Gemini when `GEMINI_API_KEY` is set, otherwise a deterministic keyword mock.
+*   `api/auth-sync.js`, `api/user.js`, `api/webhooks/lemonsqueezy.js` — Auth/profile/billing serverless functions.
+*   [Walkthrough_V2.md](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/Walkthrough_V2.md) — Detailed map of all v2 data structures, functions, and which APIs are live vs. mocked.
 
 ---
 
 ## 🛠️ Codebase Constraints & Style Guidelines
 
-1.  **Browser & CLI Decoupling:** Keep `cli/src/compiler.js` 100% independent of browser globals (`window`, `document`, `navigator`, etc.). Any new generation logic or scenario detection must be added here first, then imported/shared by the frontend.
-2.  **No Bulky Dependencies:** Keep the CLI lightweight and fast. Use built-in Node.js APIs where possible (like `readline/promises` for interactive flows).
-3.  **Docker-First Architecture:** Always generate network-isolated environments (e.g. `public`, `internal`, `db` docker networks) with built-in healthchecks for services.
-4.  **Cost and Plan Matching:** Keep plan specifications and pricing aligned with the logic inside `getPlanRAM` and `getPlanCost` within `compiler.js`.
-5.  **Always Validate First:** Never compile a topology without first running the validator logic. Ensure all outputs are cleanly directed to the specified output folder without side-effects in the repository root.
+1.  **React, no JSX:** All canvas UI uses `var h = React.createElement;` with the `h('div', { className: '...' }, [ ... ])` pattern. Hooks are destructured from `React`. Never introduce a build step or `.jsx`.
+2.  **Backend in `/api/`:** Any server-side logic is written as an Express-compatible handler inside the `/api/` folder and registered as a route in `server.js`. Secrets are read from environment variables.
+3.  **Secrets stay in env vars:** API keys (`GEMINI_API_KEY`, KV/Firebase creds) are read from `process.env` only — never hard-coded or shipped to the client.
+4.  **Docker-First Architecture:** When generating deployable environments, prefer network-isolated setups (e.g. `public`, `internal`, `db` networks) with built-in healthchecks.
+5.  **Cost and Plan Matching:** Keep plan specs and pricing aligned with `getPlanRAM` / `getPlanCost` in [canvas.html](file:///c:/Users/Ken%20Ryzen/Documents/proyectos-sass/InfraDraw/canvas.html), and GCP rates aligned with `GCP_PRICING` / `computeGcpCosts`.
+6.  **Surgical, additive changes:** Premium dark/glassmorphic UX (Inter font, soft borders, micro-animations). Add features without breaking the existing editor; reuse existing helpers (`uid`, `pushHistory`, `addNodeAt`, `fitToScreen`, etc.).
