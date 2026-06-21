@@ -15,3 +15,4 @@ cli/out-test/
 
 
 .env*
+.vercel

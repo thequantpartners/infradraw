@@ -1,30 +1,8 @@
 // GET    /api/project?id=xxx  → proyecto completo (con canvas)
 // PUT    /api/project?id=xxx  → guardar canvas / renombrar
 // DELETE /api/project?id=xxx  → eliminar proyecto
-const KV_URL   = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
-const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY;
-
-async function redis(cmd) {
-  const res = await fetch(KV_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${KV_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(cmd),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data.result;
-}
-
-async function verifyToken(token) {
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_WEB_API_KEY}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: token }) }
-  );
-  const data = await res.json();
-  if (data.error || !data.users || !data.users[0]) return null;
-  return data.users[0];
-}
+const { query } = require('../db');
+const { getUser } = require('./_auth');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,72 +14,58 @@ module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  if (!KV_URL || !KV_TOKEN) {
-    res.status(500).json({ error: 'KV no configurado.' });
-    return;
-  }
-
-  const auth = (req.headers['authorization'] || '').replace('Bearer ', '').trim();
-  if (!auth) { res.status(401).json({ error: 'Authentication required.' }); return; }
-
-  let uid;
-  try {
-    const firebaseUser = await verifyToken(auth);
-    if (!firebaseUser) { res.status(401).json({ error: 'Invalid or expired token.' }); return; }
-    uid = firebaseUser.localId;
-  } catch (err) {
-    res.status(401).json({ error: 'Token verification failed: ' + err.message });
-    return;
-  }
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: 'Authentication required.' }); return; }
+  const uid = session.sub;
 
   const { id } = req.query;
   if (!id) { res.status(400).json({ error: 'Falta el parámetro id' }); return; }
 
-  const projKey  = `project:${uid}:${id}`;
-  const listKey  = `projects_list:${uid}`;
-
   try {
     if (req.method === 'GET') {
-      const raw = await redis(['GET', projKey]);
-      if (!raw) { res.status(404).json({ error: 'Proyecto no encontrado' }); return; }
-      res.status(200).json(JSON.parse(raw));
+      const { rows } = await query(
+        `SELECT id, name, created_at, updated_at, node_count, area_count, canvas
+           FROM projects WHERE id = $1 AND uid = $2`,
+        [id, uid]
+      );
+      if (!rows[0]) { res.status(404).json({ error: 'Proyecto no encontrado' }); return; }
+      const r = rows[0];
+      res.status(200).json({
+        id: r.id,
+        name: r.name,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        nodeCount: r.node_count,
+        areaCount: r.area_count,
+        canvas: r.canvas,
+      });
 
     } else if (req.method === 'PUT') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-      const now  = new Date().toISOString();
 
-      const existingRaw = await redis(['GET', projKey]);
-      const prev = existingRaw ? JSON.parse(existingRaw) : {};
+      // Cargar fila previa para conservar canvas/name si la petición es parcial.
+      const prevRes = await query(
+        'SELECT name, canvas FROM projects WHERE id = $1 AND uid = $2',
+        [id, uid]
+      );
+      if (!prevRes.rows[0]) { res.status(404).json({ error: 'Proyecto no encontrado' }); return; }
+      const prev = prevRes.rows[0];
 
-      const canvas     = body.canvas     || prev.canvas     || null;
-      const name       = (body.name      || prev.name       || 'Sin nombre').trim();
-      const nodeCount  = canvas ? (canvas.nodes  || []).length : (prev.nodeCount  || 0);
-      const areaCount  = canvas ? (canvas.areas  || []).length : (prev.areaCount  || 0);
+      const canvas = body.canvas || prev.canvas || null;
+      const name = (body.name || prev.name || 'Sin nombre').trim();
+      const nodeCount = canvas ? (canvas.nodes || []).length : 0;
+      const areaCount = canvas ? (canvas.areas || []).length : 0;
 
-      const updated = { id, name, createdAt: prev.createdAt || now, updatedAt: now, nodeCount, areaCount, canvas };
-
-      const listRaw = await redis(['GET', listKey]);
-      const list    = listRaw ? JSON.parse(listRaw) : [];
-      const idx     = list.findIndex(p => p.id === id);
-      const meta    = { id, name, createdAt: updated.createdAt, updatedAt: now, nodeCount, areaCount };
-      if (idx !== -1) list[idx] = meta; else list.unshift(meta);
-
-      await Promise.all([
-        redis(['SET', projKey, JSON.stringify(updated)]),
-        redis(['SET', listKey, JSON.stringify(list)]),
-      ]);
-
+      await query(
+        `UPDATE projects
+            SET name = $3, canvas = $4, node_count = $5, area_count = $6, updated_at = now()
+          WHERE id = $1 AND uid = $2`,
+        [id, uid, name, canvas, nodeCount, areaCount]
+      );
       res.status(200).json({ ok: true });
 
     } else if (req.method === 'DELETE') {
-      const listRaw = await redis(['GET', listKey]);
-      const list    = listRaw ? JSON.parse(listRaw).filter(p => p.id !== id) : [];
-
-      await Promise.all([
-        redis(['SET', listKey, JSON.stringify(list)]),
-        redis(['DEL', projKey]),
-      ]);
-
+      await query('DELETE FROM projects WHERE id = $1 AND uid = $2', [id, uid]);
       res.status(200).json({ ok: true });
 
     } else {

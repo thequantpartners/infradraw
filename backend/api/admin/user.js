@@ -1,28 +1,8 @@
-const KV_URL   = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
-const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY;
+// PUT /api/admin/user — cambiar plan/estado de un usuario (solo superadmin).
+const { query } = require('../../db');
+const { getUser } = require('../_auth');
+
 const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'thequantpartners@gmail.com';
-
-async function redis(cmd) {
-  const res = await fetch(KV_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${KV_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(cmd),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data.result;
-}
-
-async function verifyToken(token) {
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_WEB_API_KEY}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: token }) }
-  );
-  const data = await res.json();
-  if (data.error || !data.users || !data.users[0]) return null;
-  return data.users[0];
-}
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -35,18 +15,13 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'PUT') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  const auth = (req.headers['authorization'] || '').replace('Bearer ', '').trim();
-  if (!auth) { res.status(401).json({ error: 'No token provided' }); return; }
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: 'Invalid or missing token' }); return; }
+
+  const isAdmin = session.role === 'admin' || session.email === SUPERADMIN_EMAIL;
+  if (!isAdmin) { res.status(403).json({ error: 'Forbidden: Access denied' }); return; }
 
   try {
-    const firebaseUser = await verifyToken(auth);
-    if (!firebaseUser) { res.status(401).json({ error: 'Invalid token' }); return; }
-
-    if (!SUPERADMIN_EMAIL || firebaseUser.email !== SUPERADMIN_EMAIL) {
-      res.status(403).json({ error: 'Forbidden: Access denied' });
-      return;
-    }
-
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const { uid, newPlan, newStatus } = body;
 
@@ -54,39 +29,40 @@ module.exports = async function handler(req, res) {
       res.status(400).json({ error: 'Missing uid, newPlan or newStatus' });
       return;
     }
-
     if (newPlan && !['free', 'pro'].includes(newPlan)) {
       res.status(400).json({ error: 'Invalid plan' });
       return;
     }
-
     if (newStatus && !['active', 'blocked'].includes(newStatus)) {
       res.status(400).json({ error: 'Invalid status' });
       return;
     }
 
-    const key = `user:${uid}`;
-    const raw = await redis(['GET', key]);
-    if (!raw) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
+    const { rows } = await query('SELECT id, email, tier, status FROM users WHERE id = $1', [uid]);
+    if (!rows[0]) { res.status(404).json({ error: 'User not found' }); return; }
 
-    const profile = typeof raw === 'string' ? JSON.parse(raw) : raw;
-
-    if (newStatus === 'blocked' && profile.email === SUPERADMIN_EMAIL) {
+    if (newStatus === 'blocked' && rows[0].email === SUPERADMIN_EMAIL) {
       res.status(403).json({ error: 'Cannot block the superadmin' });
       return;
     }
 
-    if (newPlan) profile.plan = newPlan;
-    if (newStatus) profile.status = newStatus;
-    profile.updatedAt = new Date().toISOString();
-
-    await redis(['SET', key, JSON.stringify(profile)]);
-
-    res.status(200).json(profile);
-
+    const updated = await query(
+      `UPDATE users
+          SET tier = COALESCE($2, tier),
+              status = COALESCE($3, status)
+        WHERE id = $1
+      RETURNING id, name, email, tier, status, created_at`,
+      [uid, newPlan || null, newStatus || null]
+    );
+    const r = updated.rows[0];
+    res.status(200).json({
+      uid: r.id,
+      name: r.name,
+      email: r.email,
+      plan: r.tier,
+      status: r.status,
+      createdAt: r.created_at,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

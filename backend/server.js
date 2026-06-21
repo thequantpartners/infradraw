@@ -14,6 +14,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const { initDb } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,7 +27,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ---- Rutas de API (equivalentes a las funciones Vercel de /api/) ----
-app.all('/api/auth-sync', require('./api/auth-sync'));
+app.all('/api/auth/google', require('./api/auth/google'));
 app.all('/api/user', require('./api/user'));
 app.all('/api/projects', require('./api/projects'));
 app.all('/api/project', require('./api/project'));
@@ -38,6 +39,10 @@ app.all('/api/admin/user', require('./api/admin/user'));
 // Cualquier otra ruta /api/* es desconocida: respondemos JSON 404.
 app.all('/api/*', (req, res) => res.status(404).json({ error: 'API route not found' }));
 
-app.listen(PORT, () => {
-  console.log(`InfraDraw v2 API escuchando en http://localhost:${PORT}`);
-});
+initDb()
+  .catch((err) => console.error('[server] initDb falló:', err.message))
+  .finally(() => {
+    app.listen(PORT, () => {
+      console.log(`InfraDraw v2 API escuchando en http://localhost:${PORT}`);
+    });
+  });

@@ -1,19 +1,8 @@
 // POST /api/webhooks/lemonsqueezy
 // Activa o desactiva el plan PRO del usuario al recibir eventos de Lemon Squeezy.
-const KV_URL   = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
-const LS_WEBHOOK_SECRET = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+const { query } = require('../../db');
 
-async function redis(cmd) {
-  const res = await fetch(KV_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${KV_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(cmd),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data.result;
-}
+const LS_WEBHOOK_SECRET = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
 
 async function verifySignature(rawBody, signature) {
   if (!LS_WEBHOOK_SECRET) return false;
@@ -42,7 +31,7 @@ module.exports = async function handler(req, res) {
 
   const event = req.body;
   const eventName = event?.meta?.event_name;
-  // The user's Firebase UID is passed as a custom_data field in the checkout
+  // El id del usuario (Google sub) se pasa como custom_data en el checkout.
   const uid = event?.meta?.custom_data?.uid;
 
   if (!uid) {
@@ -51,25 +40,19 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const key = `user:${uid}`;
-    const raw = await redis(['GET', key]);
-    if (!raw) { res.status(404).json({ error: 'User not found' }); return; }
-
-    const profile = JSON.parse(raw);
-
+    let newTier = null;
     if (eventName === 'subscription_created' || eventName === 'order_created') {
-      profile.plan = 'pro';
-      profile.lsSubscriptionId = event?.data?.id || null;
-      profile.lsCustomerId = event?.data?.attributes?.customer_id || null;
+      newTier = 'pro';
       console.log(`Activated PRO for uid: ${uid}`);
     } else if (eventName === 'subscription_expired' || eventName === 'subscription_cancelled') {
-      profile.plan = 'free';
-      profile.lsSubscriptionId = null;
+      newTier = 'free';
       console.log(`Deactivated PRO for uid: ${uid}`);
     }
 
-    profile.updatedAt = new Date().toISOString();
-    await redis(['SET', key, JSON.stringify(profile)]);
+    if (newTier) {
+      const { rowCount } = await query('UPDATE users SET tier = $2 WHERE id = $1', [uid, newTier]);
+      if (rowCount === 0) { res.status(404).json({ error: 'User not found' }); return; }
+    }
     res.status(200).json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

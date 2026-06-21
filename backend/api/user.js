@@ -1,29 +1,7 @@
-// GET /api/user       → perfil del usuario (plan, geminiApiKey, etc.)
-// PUT /api/user       → actualizar geminiApiKey
-const KV_URL   = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
-const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY;
-
-async function redis(cmd) {
-  const res = await fetch(KV_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${KV_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(cmd),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data.result;
-}
-
-async function verifyToken(token) {
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_WEB_API_KEY}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: token }) }
-  );
-  const data = await res.json();
-  if (data.error || !data.users || !data.users[0]) return null;
-  return data.users[0];
-}
+// GET /api/user  → perfil del usuario (tier, geminiApiKey, etc.)
+// PUT /api/user  → actualizar geminiApiKey
+const { query } = require('../db');
+const { getUser } = require('./_auth');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -31,39 +9,50 @@ function setCors(res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
+// Mapea una fila de la tabla `users` al perfil que consume el frontend.
+function toProfile(row) {
+  return {
+    uid: row.id,
+    email: row.email,
+    name: row.name,
+    photoURL: row.picture,
+    role: row.role,
+    plan: row.tier,
+    tier: row.tier,
+    status: row.status,
+    geminiApiKey: row.gemini_api_key || null,
+    createdAt: row.created_at,
+    lastLogin: row.last_login,
+  };
+}
+
 module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  const auth = (req.headers['authorization'] || '').replace('Bearer ', '').trim();
-  if (!auth) { res.status(401).json({ error: 'No token provided' }); return; }
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: 'Invalid or missing token' }); return; }
+  const uid = session.sub;
 
   try {
-    const firebaseUser = await verifyToken(auth);
-    if (!firebaseUser) { res.status(401).json({ error: 'Invalid token' }); return; }
-
-    const uid = firebaseUser.localId;
-    const key = `user:${uid}`;
-
     if (req.method === 'GET') {
-      const raw = await redis(['GET', key]);
-      if (!raw) { res.status(404).json({ error: 'User not found. Call /api/auth-sync first.' }); return; }
-      res.status(200).json(JSON.parse(raw));
+      const { rows } = await query('SELECT * FROM users WHERE id = $1', [uid]);
+      if (!rows[0]) { res.status(404).json({ error: 'User not found.' }); return; }
+      res.status(200).json(toProfile(rows[0]));
 
     } else if (req.method === 'PUT') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-      const raw = await redis(['GET', key]);
-      if (!raw) { res.status(404).json({ error: 'User not found.' }); return; }
-
-      const profile = JSON.parse(raw);
-      // Only allow updating geminiApiKey
-      if (typeof body.geminiApiKey !== 'undefined') {
-        profile.geminiApiKey = body.geminiApiKey || null;
+      // Solo se permite actualizar geminiApiKey.
+      if (typeof body.geminiApiKey === 'undefined') {
+        res.status(400).json({ error: 'Nothing to update' });
+        return;
       }
-      profile.updatedAt = new Date().toISOString();
-
-      await redis(['SET', key, JSON.stringify(profile)]);
-      res.status(200).json(profile);
+      const { rows } = await query(
+        `UPDATE users SET gemini_api_key = $2 WHERE id = $1 RETURNING *`,
+        [uid, body.geminiApiKey || null]
+      );
+      if (!rows[0]) { res.status(404).json({ error: 'User not found.' }); return; }
+      res.status(200).json(toProfile(rows[0]));
 
     } else {
       res.status(405).json({ error: 'Method not allowed' });
