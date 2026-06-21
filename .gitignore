@@ -13,3 +13,5 @@ terraform.tfvars
 *.tfstate.backup
 cli/out-test/
 
+
+.env*
