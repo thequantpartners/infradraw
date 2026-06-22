@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthGuard, authHeaders, logout } from '../lib/auth.js';
 import Skeleton from '../components/dashboard/Skeleton.jsx';
 import Toast from '../components/dashboard/Toast.jsx';
+import MonitoringView from '../components/dashboard/MonitoringView.jsx';
+import ArchitectAIView from '../components/dashboard/ArchitectAIView.jsx';
+import SettingsView from '../components/dashboard/SettingsView.jsx';
 import {
   Sidebar,
   TopBar,
@@ -127,13 +130,8 @@ export default function Dashboard() {
   }
 
   function handleNavigate(key) {
-    if (key === 'projects') {
-      setNav('projects');
-      document.getElementById('projects-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
     setNav(key);
-    if (key !== 'dashboard') showToast('Sección "' + key + '" próximamente');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // --- KPIs y series derivados de los proyectos reales ---
@@ -215,78 +213,143 @@ export default function Dashboard() {
       />
 
       <main className="mx-auto max-w-[1320px] px-7 pb-24 pt-6 max-md:px-4 md:pb-10">
-        {/* KPIs */}
-        <section className="grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-sm:grid-cols-1 max-md:gap-3">
-          <StatCard label="Proyectos activos" value={projects.length} delta="12%" deltaUp icon="folder" accent="blue" spark={spark(1 + projects.length)} />
-          <StatCard label="Nodos desplegados" value={totalNodes} sub={`${totalAreas} áreas`} delta="8%" deltaUp icon="server" accent="cyan" spark={spark(99 + totalNodes)} />
-          <StatCard label="Costo estimado" value={`$${estCost}`} sub="/ mes" delta="4%" deltaUp={false} icon="coins" accent="purple" spark={spark(7 + estCost)} />
-          <StatCard label="Uptime promedio" value="99.9%" sub="últimos 30 días" delta="0.2%" deltaUp icon="shield" accent="emerald" spark={spark(42)} />
-        </section>
-
-        {/* Cuerpo: gráfico + proyectos (izq) | resumen (der) */}
-        <section className="mt-5 grid grid-cols-[1.65fr_1fr] gap-5 max-lg:grid-cols-1">
-          <div className="flex flex-col gap-5">
-            <ActivityChart datasets={datasets} />
-
-            <div id="projects-section">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-[16px] font-bold text-text">
-                  Mis proyectos
-                  <span className="ml-2 rounded-full border border-border bg-surface2 px-2.5 py-0.5 text-[11px] font-semibold text-muted">
-                    {projects.length}
-                  </span>
-                </h2>
-                <button
-                  onClick={createProject}
-                  disabled={creating}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px] font-semibold text-text transition-colors hover:border-blue hover:text-blue disabled:opacity-60"
-                >
-                  <Icon.plus className="h-3.5 w-3.5" /> Nuevo
-                </button>
-              </div>
-
-              {loading ? (
-                <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                  {[0, 1, 2, 3].map((i) => (
-                    <Skeleton key={i} />
-                  ))}
-                </div>
-              ) : error ? (
-                <div className="rounded-2xl border border-danger/40 bg-danger/10 px-5 py-4 text-[13px] leading-[1.6] text-[#fca5a5]">
-                  <b className="text-[#f87171]">⚠ Error de conexión: </b>
-                  {error}
-                  <div className="mt-1 text-[11px] opacity-80">
-                    Asegúrate de haber configurado DATABASE_URL y JWT_SECRET en el backend.
-                  </div>
-                </div>
-              ) : filtered.length === 0 ? (
-                <EmptyProjects query={query} creating={creating} onCreate={createProject} />
-              ) : (
-                <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                  {filtered.map((p) => (
-                    <ProjectStatusCard key={p.id} project={p} onOpen={openProject} onDelete={deleteProject} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Columna derecha */}
-          <aside className="flex flex-col gap-5">
-            <HighlightCard plan={plan} />
-
-            <Panel title="Estado de servicios" action={<span className="text-[11px] font-semibold text-emerald">● En vivo</span>}>
-              <ServiceHealth services={services} />
-            </Panel>
-
-            <Panel title="Actividad reciente">
-              <ActivityFeed items={activity} />
-            </Panel>
-          </aside>
-        </section>
+        {nav === 'dashboard' && (
+          <DashboardHome
+            projects={projects}
+            datasets={datasets}
+            spark={spark}
+            services={services}
+            activity={activity}
+            plan={plan}
+            totalNodes={totalNodes}
+            totalAreas={totalAreas}
+            estCost={estCost}
+          />
+        )}
+        {nav === 'projects' && (
+          <ProjectsView
+            projects={projects}
+            filtered={filtered}
+            loading={loading}
+            error={error}
+            query={query}
+            creating={creating}
+            onCreate={createProject}
+            onOpen={openProject}
+            onDelete={deleteProject}
+          />
+        )}
+        {nav === 'monitoring' && <MonitoringView />}
+        {nav === 'ai' && <ArchitectAIView plan={plan} />}
+        {nav === 'settings' && <SettingsView session={session} plan={plan} onToast={showToast} />}
       </main>
 
       {toast && <Toast message={toast} />}
+    </div>
+  );
+}
+
+function DashboardHome({
+  projects,
+  datasets,
+  spark,
+  services,
+  activity,
+  plan,
+  totalNodes,
+  totalAreas,
+  estCost,
+}) {
+  return (
+    <div className="animate-fadeIn">
+      {/* KPIs */}
+      <section className="grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-sm:grid-cols-1 max-md:gap-3">
+        <StatCard label="Proyectos activos" value={projects.length} delta="12%" deltaUp icon="folder" accent="blue" spark={spark(1 + projects.length)} />
+        <StatCard label="Nodos desplegados" value={totalNodes} sub={`${totalAreas} áreas`} delta="8%" deltaUp icon="server" accent="cyan" spark={spark(99 + totalNodes)} />
+        <StatCard label="Costo estimado" value={`$${estCost}`} sub="/ mes" delta="4%" deltaUp={false} icon="coins" accent="purple" spark={spark(7 + estCost)} />
+        <StatCard label="Uptime promedio" value="99.9%" sub="últimos 30 días" delta="0.2%" deltaUp icon="shield" accent="emerald" spark={spark(42)} />
+      </section>
+
+      {/* Cuerpo: gráfico (izq) | resumen (der) */}
+      <section className="mt-5 grid grid-cols-[1.65fr_1fr] gap-5 max-lg:grid-cols-1">
+        <div className="flex flex-col gap-5">
+          <ActivityChart datasets={datasets} />
+        </div>
+
+        {/* Columna derecha */}
+        <aside className="flex flex-col gap-5">
+          <HighlightCard plan={plan} />
+
+          <Panel title="Estado de servicios" action={<span className="text-[11px] font-semibold text-emerald">● En vivo</span>}>
+            <ServiceHealth services={services} />
+          </Panel>
+
+          <Panel title="Actividad reciente">
+            <ActivityFeed items={activity} />
+          </Panel>
+        </aside>
+      </section>
+    </div>
+  );
+}
+
+function ProjectsView({
+  projects,
+  filtered,
+  loading,
+  error,
+  query,
+  creating,
+  onCreate,
+  onOpen,
+  onDelete,
+}) {
+  return (
+    <div className="animate-fadeIn">
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="text-[20px] font-extrabold tracking-[-.5px] text-text">
+          Mis proyectos
+          <span className="ml-2.5 rounded-full border border-border bg-surface2 px-3 py-1 text-[12px] font-semibold text-muted">
+            {projects.length}
+          </span>
+        </h2>
+        <button
+          onClick={onCreate}
+          disabled={creating}
+          className="inline-flex items-center gap-2 rounded-xl bg-grad px-4 py-2.5 text-[13px] font-bold text-white shadow-accent transition-all hover:-translate-y-px hover:shadow-accent-hover disabled:opacity-60"
+        >
+          {creating ? (
+            <span className="h-[14px] w-[14px] animate-spin-fast rounded-full border-2 border-white/30 border-t-white" />
+          ) : (
+            <Icon.plus className="h-4 w-4" />
+          )}
+          Nuevo proyecto
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-sm:grid-cols-1">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-2xl border border-danger/40 bg-danger/10 px-5 py-4 text-[13px] leading-[1.6] text-[#fca5a5]">
+          <b className="text-[#f87171]">⚠ Error de conexión: </b>
+          {error}
+          <div className="mt-1 text-[11px] opacity-80">
+            Asegúrate de haber configurado DATABASE_URL y JWT_SECRET en el backend.
+          </div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyProjects query={query} creating={creating} onCreate={onCreate} />
+      ) : (
+        <div className="grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-sm:grid-cols-1">
+          {filtered.map((p) => (
+            <ProjectStatusCard key={p.id} project={p} onOpen={onOpen} onDelete={onDelete} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
