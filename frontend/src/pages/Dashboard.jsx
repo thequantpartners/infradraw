@@ -48,7 +48,6 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
-  const [nav, setNav] = useState('dashboard');
   const [query, setQuery] = useState('');
   const toastTimer = useRef(null);
 
@@ -60,8 +59,11 @@ export default function Dashboard() {
   const obComplete = activeObStep === null;
   const obStepIndex = activeObStep ? OB_KEYS.indexOf(activeObStep) : OB_KEYS.length;
   const obProgress = Math.round((obStepIndex / OB_KEYS.length) * 100);
+  const planSelected = legacyDone || !!obState?.steps?.plan;
 
   const plan = session?.plan || obState?.plan || 'free';
+
+  const [nav, setNav] = useState(planSelected ? 'dashboard' : 'onboarding');
 
   function showToast(msg) {
     setToast(msg);
@@ -90,8 +92,8 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    if (session && obComplete) loadProjects();
-  }, [session, obComplete]);
+    if (session && planSelected) loadProjects();
+  }, [session, planSelected]);
 
   function createProject() {
     if (plan === 'free' && projects.length >= 3) {
@@ -139,7 +141,7 @@ export default function Dashboard() {
   }
 
   function handleNavigate(key) {
-    if (!obComplete) return; // Block navigation during onboarding
+    if (!planSelected && key !== 'onboarding') return; // Block navigation during onboarding until plan selected
     setNav(key);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -147,6 +149,13 @@ export default function Dashboard() {
   function handleObStepComplete(stepId, extra) {
     var newState = completeOnboardingStep(session, stepId, extra);
     setObState({ ...newState });
+    
+    // Check if all steps are now completed
+    const nextStep = OB_KEYS.find((k) => !newState.steps || !newState.steps[k]) || null;
+    if (!nextStep) {
+      setNav('dashboard');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   // --- KPIs y series derivados de los proyectos reales ---
@@ -217,67 +226,78 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen md:pl-[76px]">
       <Sidebar
-        active={obComplete ? nav : activeObStep}
+        active={nav}
         onNavigate={handleNavigate}
         onSignout={() => logout(navigate)}
-        obState={obState}
-        obComplete={obComplete}
-        activeStep={activeObStep}
+        planSelected={planSelected}
       />
 
-      {obComplete ? (
-        <>
-          <TopBar
-            session={session}
+      {nav !== 'onboarding' && (
+        <TopBar
+          session={session}
+          plan={plan}
+          query={query}
+          onQuery={setQuery}
+          creating={creating}
+          onCreate={createProject}
+        />
+      )}
+
+      <main className="mx-auto max-w-[1320px] px-7 pb-24 pt-6 max-md:px-4 md:pb-10">
+        {nav === 'dashboard' && (
+          <DashboardHome
+            projects={projects}
+            datasets={datasets}
+            spark={spark}
+            services={services}
+            activity={activity}
             plan={plan}
+            totalNodes={totalNodes}
+            totalAreas={totalAreas}
+            estCost={estCost}
+          />
+        )}
+        {nav === 'projects' && (
+          <ProjectsView
+            projects={projects}
+            filtered={filtered}
+            loading={loading}
+            error={error}
             query={query}
-            onQuery={setQuery}
             creating={creating}
             onCreate={createProject}
+            onOpen={openProject}
+            onDelete={deleteProject}
           />
-
-          <main className="mx-auto max-w-[1320px] px-7 pb-24 pt-6 max-md:px-4 md:pb-10">
-            {nav === 'dashboard' && (
-              <DashboardHome
-                projects={projects}
-                datasets={datasets}
-                spark={spark}
-                services={services}
-                activity={activity}
-                plan={plan}
-                totalNodes={totalNodes}
-                totalAreas={totalAreas}
-                estCost={estCost}
-              />
+        )}
+        {nav === 'monitoring' && <MonitoringView />}
+        {nav === 'ai' && <ArchitectAIView plan={plan} />}
+        {nav === 'settings' && <SettingsView session={session} plan={plan} onToast={showToast} />}
+        
+        {nav === 'onboarding' && (
+          <div className="mx-auto max-w-[800px] pt-4">
+            <OnboardingHeader session={session} stepIndex={obStepIndex} progress={obProgress} />
+            {activeObStep === 'plan' && <PlanStep onComplete={(id) => handleObStepComplete('plan', id)} />}
+            {activeObStep === 'gcloud' && <GCloudStep onComplete={() => handleObStepComplete('gcloud')} />}
+            {activeObStep === 'project' && <ProjectStep onComplete={() => handleObStepComplete('project')} />}
+            {activeObStep === 'telegram' && <TelegramStep onComplete={() => handleObStepComplete('telegram')} />}
+            {activeObStep === 'ai' && <AIStep onComplete={() => handleObStepComplete('ai')} />}
+            {activeObStep === null && (
+              <div className="animate-fadeUp-fast rounded-2xl border border-emerald/30 bg-emerald/10 p-8 text-center backdrop-blur-md">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald/20 text-[32px]">🎉</div>
+                <h2 className="text-[24px] font-extrabold text-emerald">¡Todo configurado!</h2>
+                <p className="mt-2 text-[14px] text-emerald/80">Has completado todos los pasos del setup inicial.</p>
+                <button
+                  onClick={() => handleNavigate('dashboard')}
+                  className="mt-6 rounded-xl bg-emerald px-6 py-3 text-[14px] font-bold text-white shadow-lg transition-all hover:-translate-y-px"
+                >
+                  Ir al Dashboard →
+                </button>
+              </div>
             )}
-            {nav === 'projects' && (
-              <ProjectsView
-                projects={projects}
-                filtered={filtered}
-                loading={loading}
-                error={error}
-                query={query}
-                creating={creating}
-                onCreate={createProject}
-                onOpen={openProject}
-                onDelete={deleteProject}
-              />
-            )}
-            {nav === 'monitoring' && <MonitoringView />}
-            {nav === 'ai' && <ArchitectAIView plan={plan} />}
-            {nav === 'settings' && <SettingsView session={session} plan={plan} onToast={showToast} />}
-          </main>
-        </>
-      ) : (
-        <main className="mx-auto max-w-[800px] px-7 pb-24 pt-10 max-md:px-4 max-md:pt-6">
-          <OnboardingHeader session={session} stepIndex={obStepIndex} progress={obProgress} />
-          {activeObStep === 'plan' && <PlanStep onComplete={(id) => handleObStepComplete('plan', id)} />}
-          {activeObStep === 'gcloud' && <GCloudStep onComplete={() => handleObStepComplete('gcloud')} />}
-          {activeObStep === 'project' && <ProjectStep onComplete={() => handleObStepComplete('project')} />}
-          {activeObStep === 'telegram' && <TelegramStep onComplete={() => handleObStepComplete('telegram')} />}
-          {activeObStep === 'ai' && <AIStep onComplete={() => handleObStepComplete('ai')} />}
-        </main>
-      )}
+          </div>
+        )}
+      </main>
 
       {toast && <Toast message={toast} />}
     </div>

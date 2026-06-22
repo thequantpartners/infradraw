@@ -84,56 +84,16 @@ export const Icon = I;
 /* ============================================================
    Sidebar — riel vertical en desktop, barra inferior en mobile.
    ============================================================ */
+
+
 const NAV = [
+  { key: 'onboarding', label: 'Setup', icon: 'check' },
   { key: 'dashboard', label: 'Dashboard', icon: 'grid' },
   { key: 'projects', label: 'Proyectos', icon: 'folder' },
   { key: 'monitoring', label: 'Monitoreo', icon: 'pulse' },
   { key: 'ai', label: 'Architect AI', icon: 'spark' },
   { key: 'settings', label: 'Ajustes', icon: 'gear' },
 ];
-
-const OB_STEPS = [
-  { key: 'plan', step: 1, label: 'Elige tu plan' },
-  { key: 'gcloud', step: 2, label: 'Conecta Google Cloud' },
-  { key: 'project', step: 3, label: 'Crea tu primer proyecto' },
-  { key: 'telegram', step: 4, label: 'Configura Telegram' },
-  { key: 'ai', step: 5, label: 'Genera estrategia IA' },
-];
-
-function OnboardingNavBtn({ item, status, onClick, mobile }) {
-  const done = status === 'done';
-  const active = status === 'active';
-  const locked = status === 'locked';
-  return (
-    <button
-      title={item.label + (done ? ' ✓' : locked ? ' (bloqueado)' : '')}
-      onClick={() => !locked && onClick(item.key)}
-      disabled={locked}
-      className={[
-        'group relative flex items-center justify-center rounded-xl transition-all duration-300',
-        mobile ? 'h-11 w-11' : 'h-12 w-12',
-        done
-          ? 'bg-emerald/20 text-emerald ring-1 ring-emerald/30'
-          : active
-            ? 'bg-grad text-white shadow-glow animate-pulse'
-            : 'border border-border/40 text-dim cursor-not-allowed opacity-40',
-      ].join(' ')}
-    >
-      {done ? (
-        <I.check className={mobile ? 'h-4 w-4' : 'h-5 w-5'} />
-      ) : (
-        <span className={['font-bold', mobile ? 'text-[13px]' : 'text-[14px]'].join(' ')}>
-          {item.step}
-        </span>
-      )}
-      {!mobile && (
-        <span className="pointer-events-none absolute left-[58px] z-50 origin-left scale-90 whitespace-nowrap rounded-lg border border-border bg-surface2 px-2.5 py-1 text-[12px] font-semibold text-text opacity-0 shadow-card transition-all group-hover:scale-100 group-hover:opacity-100">
-          {item.label}{done ? ' ✓' : locked ? ' 🔒' : ''}
-        </span>
-      )}
-    </button>
-  );
-}
 
 function NavButton({ item, active, onClick, mobile, locked }) {
   const Glyph = I[item.icon];
@@ -167,9 +127,7 @@ function NavButton({ item, active, onClick, mobile, locked }) {
   );
 }
 
-export function Sidebar({ active, onNavigate, onSignout, obState, obComplete, activeStep }) {
-  const showOb = !obComplete;
-
+export function Sidebar({ active, onNavigate, onSignout, planSelected }) {
   return (
     <>
       {/* Desktop rail */}
@@ -179,31 +137,12 @@ export function Sidebar({ active, onNavigate, onSignout, obState, obComplete, ac
             ID
           </div>
 
-          {showOb ? (
-            <>
-              {/* Onboarding steps */}
-              {OB_STEPS.map((item) => {
-                var done = obState && obState.steps && obState.steps[item.key];
-                var isActive = item.key === activeStep;
-                var status = done ? 'done' : isActive ? 'active' : 'locked';
-                return (
-                  <OnboardingNavBtn key={item.key} item={item} status={status} onClick={onNavigate} />
-                );
-              })}
-
-              {/* Separator */}
-              <div className="my-1.5 h-px w-8 bg-border/50" />
-
-              {/* Locked nav items */}
-              {NAV.map((item) => (
-                <NavButton key={item.key} item={item} active={false} onClick={onNavigate} locked />
-              ))}
-            </>
-          ) : (
-            NAV.map((item) => (
-              <NavButton key={item.key} item={item} active={active === item.key} onClick={onNavigate} />
-            ))
-          )}
+          {NAV.map((item) => {
+            const isLocked = !planSelected && item.key !== 'onboarding';
+            return (
+              <NavButton key={item.key} item={item} active={active === item.key} onClick={onNavigate} locked={isLocked} />
+            );
+          })}
         </div>
         <button
           title="Cerrar sesión"
@@ -216,23 +155,13 @@ export function Sidebar({ active, onNavigate, onSignout, obState, obComplete, ac
 
       {/* Mobile bottom bar */}
       <nav className="fixed bottom-0 left-0 z-30 flex w-full items-center justify-around border-t border-border bg-surface/90 px-2 py-2 backdrop-blur-xl md:hidden">
-        {showOb ? (
-          OB_STEPS.map((item) => {
-            var done = obState && obState.steps && obState.steps[item.key];
-            var isActive = item.key === activeStep;
-            var status = done ? 'done' : isActive ? 'active' : 'locked';
-            return (
-              <OnboardingNavBtn key={item.key} item={item} status={status} onClick={onNavigate} mobile />
-            );
-          })
-        ) : (
-          <>
-            {NAV.map((item) => (
-              <NavButton key={item.key} item={item} active={active === item.key} onClick={onNavigate} mobile />
-            ))}
-            <NavButton item={{ key: 'logout', label: 'Salir', icon: 'logout' }} active={false} onClick={onSignout} mobile />
-          </>
-        )}
+        {NAV.map((item) => {
+          const isLocked = !planSelected && item.key !== 'onboarding';
+          return (
+            <NavButton key={item.key} item={item} active={active === item.key} onClick={onNavigate} locked={isLocked} mobile />
+          );
+        })}
+        <NavButton item={{ key: 'logout', label: 'Salir', icon: 'logout' }} active={false} onClick={onSignout} mobile />
       </nav>
     </>
   );
