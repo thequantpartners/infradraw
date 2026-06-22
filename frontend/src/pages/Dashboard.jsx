@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthGuard, authHeaders, logout } from '../lib/auth.js';
+import { useAuthGuard, authHeaders, logout, getOnboardingState, completeOnboardingStep, isOnboardingDone, isAllOnboardingComplete } from '../lib/auth.js';
 import Skeleton from '../components/dashboard/Skeleton.jsx';
 import Toast from '../components/dashboard/Toast.jsx';
 import MonitoringView from '../components/dashboard/MonitoringView.jsx';
@@ -52,7 +52,16 @@ export default function Dashboard() {
   const [query, setQuery] = useState('');
   const toastTimer = useRef(null);
 
-  const plan = session?.plan || 'free';
+  // --- Onboarding state ---
+  const [obState, setObState] = useState(() => session ? getOnboardingState(session) : { steps: {} });
+  const legacyDone = session ? isOnboardingDone(session) : false;
+  const OB_KEYS = ['plan', 'gcloud', 'project', 'telegram', 'ai'];
+  const activeObStep = legacyDone ? null : OB_KEYS.find((k) => !obState.steps || !obState.steps[k]) || null;
+  const obComplete = activeObStep === null;
+  const obStepIndex = activeObStep ? OB_KEYS.indexOf(activeObStep) : OB_KEYS.length;
+  const obProgress = Math.round((obStepIndex / OB_KEYS.length) * 100);
+
+  const plan = session?.plan || obState?.plan || 'free';
 
   function showToast(msg) {
     setToast(msg);
@@ -81,8 +90,8 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    if (session) loadProjects();
-  }, [session]);
+    if (session && obComplete) loadProjects();
+  }, [session, obComplete]);
 
   function createProject() {
     if (plan === 'free' && projects.length >= 3) {
@@ -130,8 +139,14 @@ export default function Dashboard() {
   }
 
   function handleNavigate(key) {
+    if (!obComplete) return; // Block navigation during onboarding
     setNav(key);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function handleObStepComplete(stepId, extra) {
+    var newState = completeOnboardingStep(session, stepId, extra);
+    setObState({ ...newState });
   }
 
   // --- KPIs y series derivados de los proyectos reales ---
@@ -201,48 +216,68 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen md:pl-[76px]">
-      <Sidebar active={nav} onNavigate={handleNavigate} onSignout={() => logout(navigate)} />
-
-      <TopBar
-        session={session}
-        plan={plan}
-        query={query}
-        onQuery={setQuery}
-        creating={creating}
-        onCreate={createProject}
+      <Sidebar
+        active={obComplete ? nav : activeObStep}
+        onNavigate={handleNavigate}
+        onSignout={() => logout(navigate)}
+        obState={obState}
+        obComplete={obComplete}
+        activeStep={activeObStep}
       />
 
-      <main className="mx-auto max-w-[1320px] px-7 pb-24 pt-6 max-md:px-4 md:pb-10">
-        {nav === 'dashboard' && (
-          <DashboardHome
-            projects={projects}
-            datasets={datasets}
-            spark={spark}
-            services={services}
-            activity={activity}
+      {obComplete ? (
+        <>
+          <TopBar
+            session={session}
             plan={plan}
-            totalNodes={totalNodes}
-            totalAreas={totalAreas}
-            estCost={estCost}
-          />
-        )}
-        {nav === 'projects' && (
-          <ProjectsView
-            projects={projects}
-            filtered={filtered}
-            loading={loading}
-            error={error}
             query={query}
+            onQuery={setQuery}
             creating={creating}
             onCreate={createProject}
-            onOpen={openProject}
-            onDelete={deleteProject}
           />
-        )}
-        {nav === 'monitoring' && <MonitoringView />}
-        {nav === 'ai' && <ArchitectAIView plan={plan} />}
-        {nav === 'settings' && <SettingsView session={session} plan={plan} onToast={showToast} />}
-      </main>
+
+          <main className="mx-auto max-w-[1320px] px-7 pb-24 pt-6 max-md:px-4 md:pb-10">
+            {nav === 'dashboard' && (
+              <DashboardHome
+                projects={projects}
+                datasets={datasets}
+                spark={spark}
+                services={services}
+                activity={activity}
+                plan={plan}
+                totalNodes={totalNodes}
+                totalAreas={totalAreas}
+                estCost={estCost}
+              />
+            )}
+            {nav === 'projects' && (
+              <ProjectsView
+                projects={projects}
+                filtered={filtered}
+                loading={loading}
+                error={error}
+                query={query}
+                creating={creating}
+                onCreate={createProject}
+                onOpen={openProject}
+                onDelete={deleteProject}
+              />
+            )}
+            {nav === 'monitoring' && <MonitoringView />}
+            {nav === 'ai' && <ArchitectAIView plan={plan} />}
+            {nav === 'settings' && <SettingsView session={session} plan={plan} onToast={showToast} />}
+          </main>
+        </>
+      ) : (
+        <main className="mx-auto max-w-[800px] px-7 pb-24 pt-10 max-md:px-4 max-md:pt-6">
+          <OnboardingHeader session={session} stepIndex={obStepIndex} progress={obProgress} />
+          {activeObStep === 'plan' && <PlanStep onComplete={(id) => handleObStepComplete('plan', id)} />}
+          {activeObStep === 'gcloud' && <GCloudStep onComplete={() => handleObStepComplete('gcloud')} />}
+          {activeObStep === 'project' && <ProjectStep onComplete={() => handleObStepComplete('project')} />}
+          {activeObStep === 'telegram' && <TelegramStep onComplete={() => handleObStepComplete('telegram')} />}
+          {activeObStep === 'ai' && <AIStep onComplete={() => handleObStepComplete('ai')} />}
+        </main>
+      )}
 
       {toast && <Toast message={toast} />}
     </div>
@@ -393,6 +428,257 @@ function EmptyProjects({ query, creating, onCreate }) {
         )}
         Crear primer proyecto
       </button>
+    </div>
+  );
+}
+
+// === Onboarding step views ===
+
+const OB_STEP_LABELS = ['Elige tu plan', 'Google Cloud', 'Primer proyecto', 'Telegram', 'Estrategia IA'];
+
+function OnboardingHeader({ session, stepIndex, progress }) {
+  const firstName = (session.name || 'crack').split(' ')[0];
+  return (
+    <div className="mb-10 animate-fadeIn">
+      <div className="mb-6 flex items-center gap-3">
+        <span className="text-grad text-[20px] font-extrabold tracking-[-.6px]">InfraDraw</span>
+        <span className="rounded-full border border-border bg-surface2 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+          Setup
+        </span>
+      </div>
+      <h1 className="text-[28px] font-extrabold leading-tight tracking-[-1px] text-text max-md:text-[22px]">
+        Bienvenido, {firstName} <span className="inline-block animate-float">👋</span>
+      </h1>
+      <p className="mt-2 text-[15px] text-muted max-md:text-[14px]">
+        Configura tu copiloto de infraestructura en 5 pasos rápidos.
+      </p>
+      <div className="mt-6">
+        <div className="mb-2 flex items-center justify-between text-[12px] font-semibold">
+          <span className="text-muted">Paso {stepIndex + 1} de 5 · {OB_STEP_LABELS[stepIndex]}</span>
+          <span className="text-text">{progress}%</span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+          <div
+            className="h-full rounded-full bg-grad transition-[width] duration-500 ease-out"
+            style={{ width: progress + '%' }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlanStep({ onComplete }) {
+  return (
+    <div className="animate-fadeUp-fast">
+      <div className="mb-8 text-center">
+        <span className="text-[48px]">💳</span>
+        <h2 className="mt-3 text-[24px] font-extrabold tracking-[-.5px] text-text">Elige tu plan</h2>
+        <p className="mt-2 text-[14px] text-muted">Empieza gratis o desbloquea todo el poder con Pro.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-5 max-sm:grid-cols-1">
+        {/* Free */}
+        <button
+          onClick={() => onComplete('free')}
+          className="group relative flex flex-col rounded-2xl border border-border bg-surface/60 p-6 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-blue/50 hover:shadow-card-hover"
+        >
+          <div className="text-[18px] font-extrabold text-text">Free</div>
+          <div className="mt-1 text-[28px] font-extrabold tracking-[-1px] text-text">
+            $0<span className="text-[14px] font-medium text-muted">/mes</span>
+          </div>
+          <ul className="mt-4 flex-1 space-y-2.5">
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> 3 proyectos</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Editor de canvas</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Export PNG</li>
+          </ul>
+          <div className="mt-5 rounded-xl border border-border bg-surface2 py-3 text-center text-[14px] font-bold text-text transition-all group-hover:border-blue/50 group-hover:bg-blue/20 group-hover:text-blue">
+            Empezar gratis →
+          </div>
+        </button>
+        {/* Pro */}
+        <button
+          onClick={() => onComplete('pro')}
+          className="group relative flex flex-col rounded-2xl border border-blue/40 bg-[linear-gradient(135deg,rgba(59,109,232,0.08),rgba(124,90,240,0.08))] p-6 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-blue/70 hover:shadow-pro-card"
+        >
+          <span className="absolute -top-3 right-4 rounded-full bg-grad px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-accent">
+            Recomendado
+          </span>
+          <div className="text-[18px] font-extrabold text-text">Pro</div>
+          <div className="mt-1 text-[28px] font-extrabold tracking-[-1px] text-text">
+            $19<span className="text-[14px] font-medium text-muted">/mes</span>
+          </div>
+          <ul className="mt-4 flex-1 space-y-2.5">
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Proyectos ilimitados</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Architect AI + costos</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Bot de Telegram</li>
+          </ul>
+          <div className="mt-5 rounded-xl bg-grad py-3 text-center text-[14px] font-bold text-white shadow-accent transition-all group-hover:-translate-y-px group-hover:shadow-glow">
+            Subir a Pro →
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GCloudStep({ onComplete }) {
+  const [busy, setBusy] = useState(false);
+  function connect() {
+    setBusy(true);
+    setTimeout(() => { setBusy(false); onComplete(); }, 1200);
+  }
+  return (
+    <div className="animate-fadeUp-fast">
+      <div className="mb-8 text-center">
+        <span className="text-[48px]">☁️</span>
+        <h2 className="mt-3 text-[24px] font-extrabold tracking-[-.5px] text-text">Conecta Google Cloud</h2>
+        <p className="mt-2 text-[14px] text-muted">Vincula tu cuenta para leer costos y recursos reales de tu infraestructura.</p>
+      </div>
+      <div className="mx-auto max-w-[440px] rounded-2xl border border-border bg-surface/60 p-8 text-center backdrop-blur-md">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue/10 text-[28px]">☁️</div>
+        <p className="mb-6 text-[13px] leading-[1.6] text-muted">
+          Conectaremos tu proyecto de GCP para importar recursos, monitorear costos y sincronizar tu infraestructura.
+        </p>
+        <button
+          onClick={connect}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-xl bg-grad px-6 py-3 text-[14px] font-bold text-white shadow-accent transition-all hover:-translate-y-px hover:shadow-glow disabled:opacity-60"
+        >
+          {busy && <span className="h-4 w-4 animate-spin-fast rounded-full border-2 border-white/30 border-t-white" />}
+          {busy ? 'Conectando...' : 'Conectar cuenta →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectStep({ onComplete }) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  function create() {
+    if (!name.trim()) return;
+    setBusy(true);
+    fetch('/api/projects', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ name: name.trim() }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        setBusy(false);
+        if (data.error) { alert('Error: ' + data.error); return; }
+        onComplete();
+      })
+      .catch(() => { setBusy(false); onComplete(); });
+  }
+  return (
+    <div className="animate-fadeUp-fast">
+      <div className="mb-8 text-center">
+        <span className="text-[48px]">🗂️</span>
+        <h2 className="mt-3 text-[24px] font-extrabold tracking-[-.5px] text-text">Crea tu primer proyecto</h2>
+        <p className="mt-2 text-[14px] text-muted">Dale un nombre a tu primer diagrama de infraestructura.</p>
+      </div>
+      <div className="mx-auto max-w-[440px] rounded-2xl border border-border bg-surface/60 p-8 backdrop-blur-md">
+        <form
+          onSubmit={(e) => { e.preventDefault(); create(); }}
+          className="flex flex-col gap-4"
+        >
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ej. Stack de producción"
+            className="rounded-xl border border-border bg-surface px-4 py-3.5 text-[14px] text-text outline-none transition-colors placeholder:text-dim focus:border-blue"
+          />
+          <button
+            type="submit"
+            disabled={!name.trim() || busy}
+            className="rounded-xl bg-grad px-6 py-3 text-[14px] font-bold text-white shadow-accent transition-all hover:-translate-y-px hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin-fast rounded-full border-2 border-white/30 border-t-white" />
+                Creando...
+              </span>
+            ) : 'Crear proyecto →'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function TelegramStep({ onComplete }) {
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState(false);
+  function connect() {
+    if (!token.trim()) return;
+    setBusy(true);
+    setTimeout(() => { setBusy(false); onComplete(); }, 1000);
+  }
+  return (
+    <div className="animate-fadeUp-fast">
+      <div className="mb-8 text-center">
+        <span className="text-[48px]">🤖</span>
+        <h2 className="mt-3 text-[24px] font-extrabold tracking-[-.5px] text-text">Configura el bot de Telegram</h2>
+        <p className="mt-2 text-[14px] text-muted">Recibe alertas y controla despliegues desde Telegram.</p>
+      </div>
+      <div className="mx-auto max-w-[440px] rounded-2xl border border-border bg-surface/60 p-8 backdrop-blur-md">
+        <div className="mb-4 rounded-xl border border-blue/20 bg-blue/[0.06] px-4 py-3 text-[12px] leading-[1.6] text-muted">
+          💡 Obtén tu token desde <span className="font-bold text-blue">@BotFather</span> en Telegram.
+        </div>
+        <div className="flex flex-col gap-4">
+          <input
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="Token del bot"
+            className="rounded-xl border border-border bg-surface px-4 py-3.5 text-[14px] text-text outline-none transition-colors placeholder:text-dim focus:border-blue"
+          />
+          <button
+            onClick={connect}
+            disabled={!token.trim() || busy}
+            className="rounded-xl bg-grad px-6 py-3 text-[14px] font-bold text-white shadow-accent transition-all hover:-translate-y-px hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin-fast rounded-full border-2 border-white/30 border-t-white" />
+                Vinculando...
+              </span>
+            ) : 'Vincular bot →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AIStep({ onComplete }) {
+  const [busy, setBusy] = useState(false);
+  function generate() {
+    setBusy(true);
+    setTimeout(() => { setBusy(false); onComplete(); }, 1500);
+  }
+  return (
+    <div className="animate-fadeUp-fast">
+      <div className="mb-8 text-center">
+        <span className="text-[48px]">✨</span>
+        <h2 className="mt-3 text-[24px] font-extrabold tracking-[-.5px] text-text">Genera tu estrategia con IA</h2>
+        <p className="mt-2 text-[14px] text-muted">Deja que el Architect AI proponga tu primera topología optimizada.</p>
+      </div>
+      <div className="mx-auto max-w-[440px] rounded-2xl border border-border bg-surface/60 p-8 text-center backdrop-blur-md">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-purple/10 text-[28px]">✨</div>
+        <p className="mb-6 text-[13px] leading-[1.6] text-muted">
+          Analizaremos tu configuración y generaremos una topología óptima para tu infraestructura.
+        </p>
+        <button
+          onClick={generate}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-xl bg-grad px-6 py-3 text-[14px] font-bold text-white shadow-accent transition-all hover:-translate-y-px hover:shadow-glow disabled:opacity-60"
+        >
+          {busy && <span className="h-4 w-4 animate-spin-fast rounded-full border-2 border-white/30 border-t-white" />}
+          {busy ? 'Generando estrategia...' : 'Generar setup →'}
+        </button>
+      </div>
     </div>
   );
 }

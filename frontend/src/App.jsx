@@ -2,8 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import Landing from './pages/Landing.jsx';
 import Dashboard from './pages/Dashboard.jsx';
-import Onboarding from './pages/Onboarding.jsx';
-import { useAuthGuard, isOnboardingDone } from './lib/auth.js';
+import { useAuthGuard } from './lib/auth.js';
 
 const ADMIN_EMAIL = 'thequantpartners@gmail.com';
 
@@ -17,14 +16,14 @@ function LegacyRedirect({ to }) {
 }
 
 // Punto de entrada tras el login (/app). Decide a dónde aterrizar:
-// superadmin -> /admin, onboarding pendiente -> /onboarding, si no -> /dashboard.
+// superadmin -> /admin, si no -> /dashboard (el onboarding vive dentro del dashboard).
 function AppGate() {
   const session = useAuthGuard();
   if (!session) return null;
   if (session.email === ADMIN_EMAIL) {
     return <LegacyRedirect to="/admin.html" />;
   }
-  return <Navigate to={isOnboardingDone(session) ? '/dashboard' : '/onboarding'} replace />;
+  return <Navigate to="/dashboard" replace />;
 }
 
 export default function App() {
@@ -32,7 +31,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/app" element={<AppGate />} />
-      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/canvas" element={<LegacyRedirect to={'/canvas.html' + window.location.search} />} />
       <Route path="/admin" element={<LegacyRedirect to="/admin.html" />} />

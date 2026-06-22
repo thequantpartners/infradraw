@@ -67,6 +67,16 @@ const I = {
       <path d="M12 3 4 6v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V6z" /><path d="m9 12 2 2 4-4" />
     </svg>
   ),
+  lock: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 1 1 8 0v4" />
+    </svg>
+  ),
+  check: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  ),
 };
 
 export const Icon = I;
@@ -82,29 +92,84 @@ const NAV = [
   { key: 'settings', label: 'Ajustes', icon: 'gear' },
 ];
 
-function NavButton({ item, active, onClick, mobile }) {
-  const Glyph = I[item.icon];
+const OB_STEPS = [
+  { key: 'plan', step: 1, label: 'Elige tu plan' },
+  { key: 'gcloud', step: 2, label: 'Conecta Google Cloud' },
+  { key: 'project', step: 3, label: 'Crea tu primer proyecto' },
+  { key: 'telegram', step: 4, label: 'Configura Telegram' },
+  { key: 'ai', step: 5, label: 'Genera estrategia IA' },
+];
+
+function OnboardingNavBtn({ item, status, onClick, mobile }) {
+  const done = status === 'done';
+  const active = status === 'active';
+  const locked = status === 'locked';
   return (
     <button
-      title={item.label}
-      onClick={() => onClick(item.key)}
+      title={item.label + (done ? ' ✓' : locked ? ' (bloqueado)' : '')}
+      onClick={() => !locked && onClick(item.key)}
+      disabled={locked}
       className={[
-        'group relative flex items-center justify-center rounded-xl transition-all duration-200',
+        'group relative flex items-center justify-center rounded-xl transition-all duration-300',
         mobile ? 'h-11 w-11' : 'h-12 w-12',
-        active ? 'bg-grad text-white shadow-accent' : 'text-muted hover:bg-surface2 hover:text-text',
+        done
+          ? 'bg-emerald/20 text-emerald ring-1 ring-emerald/30'
+          : active
+            ? 'bg-grad text-white shadow-glow animate-pulse'
+            : 'border border-border/40 text-dim cursor-not-allowed opacity-40',
       ].join(' ')}
     >
-      <Glyph className={mobile ? 'h-5 w-5' : 'h-[22px] w-[22px]'} />
+      {done ? (
+        <I.check className={mobile ? 'h-4 w-4' : 'h-5 w-5'} />
+      ) : (
+        <span className={['font-bold', mobile ? 'text-[13px]' : 'text-[14px]'].join(' ')}>
+          {item.step}
+        </span>
+      )}
       {!mobile && (
         <span className="pointer-events-none absolute left-[58px] z-50 origin-left scale-90 whitespace-nowrap rounded-lg border border-border bg-surface2 px-2.5 py-1 text-[12px] font-semibold text-text opacity-0 shadow-card transition-all group-hover:scale-100 group-hover:opacity-100">
-          {item.label}
+          {item.label}{done ? ' ✓' : locked ? ' 🔒' : ''}
         </span>
       )}
     </button>
   );
 }
 
-export function Sidebar({ active, onNavigate, onSignout }) {
+function NavButton({ item, active, onClick, mobile, locked }) {
+  const Glyph = I[item.icon];
+  return (
+    <button
+      title={locked ? item.label + ' (bloqueado)' : item.label}
+      onClick={() => !locked && onClick(item.key)}
+      disabled={locked}
+      className={[
+        'group relative flex items-center justify-center rounded-xl transition-all duration-200',
+        mobile ? 'h-11 w-11' : 'h-12 w-12',
+        locked
+          ? 'text-dim/25 cursor-not-allowed'
+          : active
+            ? 'bg-grad text-white shadow-accent'
+            : 'text-muted hover:bg-surface2 hover:text-text',
+      ].join(' ')}
+    >
+      <Glyph className={mobile ? 'h-5 w-5' : 'h-[22px] w-[22px]'} />
+      {locked && !mobile && (
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-surface2 text-dim">
+          <I.lock className="h-2.5 w-2.5" />
+        </span>
+      )}
+      {!mobile && (
+        <span className="pointer-events-none absolute left-[58px] z-50 origin-left scale-90 whitespace-nowrap rounded-lg border border-border bg-surface2 px-2.5 py-1 text-[12px] font-semibold text-text opacity-0 shadow-card transition-all group-hover:scale-100 group-hover:opacity-100">
+          {item.label}{locked ? ' 🔒' : ''}
+        </span>
+      )}
+    </button>
+  );
+}
+
+export function Sidebar({ active, onNavigate, onSignout, obState, obComplete, activeStep }) {
+  const showOb = !obComplete;
+
   return (
     <>
       {/* Desktop rail */}
@@ -113,9 +178,32 @@ export function Sidebar({ active, onNavigate, onSignout }) {
           <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-grad text-[18px] font-extrabold text-white shadow-glow">
             ID
           </div>
-          {NAV.map((item) => (
-            <NavButton key={item.key} item={item} active={active === item.key} onClick={onNavigate} />
-          ))}
+
+          {showOb ? (
+            <>
+              {/* Onboarding steps */}
+              {OB_STEPS.map((item) => {
+                var done = obState && obState.steps && obState.steps[item.key];
+                var isActive = item.key === activeStep;
+                var status = done ? 'done' : isActive ? 'active' : 'locked';
+                return (
+                  <OnboardingNavBtn key={item.key} item={item} status={status} onClick={onNavigate} />
+                );
+              })}
+
+              {/* Separator */}
+              <div className="my-1.5 h-px w-8 bg-border/50" />
+
+              {/* Locked nav items */}
+              {NAV.map((item) => (
+                <NavButton key={item.key} item={item} active={false} onClick={onNavigate} locked />
+              ))}
+            </>
+          ) : (
+            NAV.map((item) => (
+              <NavButton key={item.key} item={item} active={active === item.key} onClick={onNavigate} />
+            ))
+          )}
         </div>
         <button
           title="Cerrar sesión"
@@ -128,10 +216,23 @@ export function Sidebar({ active, onNavigate, onSignout }) {
 
       {/* Mobile bottom bar */}
       <nav className="fixed bottom-0 left-0 z-30 flex w-full items-center justify-around border-t border-border bg-surface/90 px-2 py-2 backdrop-blur-xl md:hidden">
-        {NAV.map((item) => (
-          <NavButton key={item.key} item={item} active={active === item.key} onClick={onNavigate} mobile />
-        ))}
-        <NavButton item={{ key: 'logout', label: 'Salir', icon: 'logout' }} active={false} onClick={onSignout} mobile />
+        {showOb ? (
+          OB_STEPS.map((item) => {
+            var done = obState && obState.steps && obState.steps[item.key];
+            var isActive = item.key === activeStep;
+            var status = done ? 'done' : isActive ? 'active' : 'locked';
+            return (
+              <OnboardingNavBtn key={item.key} item={item} status={status} onClick={onNavigate} mobile />
+            );
+          })
+        ) : (
+          <>
+            {NAV.map((item) => (
+              <NavButton key={item.key} item={item} active={active === item.key} onClick={onNavigate} mobile />
+            ))}
+            <NavButton item={{ key: 'logout', label: 'Salir', icon: 'logout' }} active={false} onClick={onSignout} mobile />
+          </>
+        )}
       </nav>
     </>
   );

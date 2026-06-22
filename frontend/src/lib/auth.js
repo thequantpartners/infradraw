@@ -71,7 +71,51 @@ export function setOnboardingDone(session) {
 export function resetOnboarding(session) {
   if (session && session.email) {
     localStorage.removeItem(ONBOARDING_PREFIX + session.email);
+    localStorage.removeItem(OB_STATE_PREFIX + session.email);
   }
+}
+
+// --- Onboarding granular state (per step) ---
+const OB_STATE_PREFIX = 'infradraw_ob:';
+const OB_STEPS_ORDER = ['plan', 'gcloud', 'project', 'telegram', 'ai'];
+
+export function getOnboardingState(session) {
+  if (!session || !session.email) return { plan: null, steps: {} };
+  try {
+    var raw = localStorage.getItem(OB_STATE_PREFIX + session.email);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* ignore */ }
+  return { plan: null, steps: {} };
+}
+
+function _saveOBState(session, state) {
+  if (session && session.email) {
+    localStorage.setItem(OB_STATE_PREFIX + session.email, JSON.stringify(state));
+  }
+}
+
+export function completeOnboardingStep(session, stepId, extra) {
+  var state = getOnboardingState(session);
+  state.steps[stepId] = true;
+  if (stepId === 'plan' && extra) state.plan = extra;
+  _saveOBState(session, state);
+  // If all steps done, also set the legacy flag for backward compat
+  if (OB_STEPS_ORDER.every(function(s) { return state.steps[s]; })) {
+    setOnboardingDone(session);
+  }
+  return state;
+}
+
+export function getActiveOnboardingStep(session) {
+  var state = getOnboardingState(session);
+  for (var i = 0; i < OB_STEPS_ORDER.length; i++) {
+    if (!state.steps[OB_STEPS_ORDER[i]]) return OB_STEPS_ORDER[i];
+  }
+  return null;
+}
+
+export function isAllOnboardingComplete(session) {
+  return getActiveOnboardingStep(session) === null;
 }
 
 // Hook para páginas protegidas (ej. /app). Redirige a / si no hay sesión válida.
