@@ -6,14 +6,14 @@ const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'thequantpartners@gmail
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
 module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-  if (req.method !== 'PUT') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  if (req.method !== 'PUT' && req.method !== 'DELETE') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   const session = getUser(req);
   if (!session) { res.status(401).json({ error: 'Invalid or missing token' }); return; }
@@ -25,11 +25,33 @@ module.exports = async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const { uid, newPlan, newStatus } = body;
 
-    if (!uid || (!newPlan && !newStatus)) {
-      res.status(400).json({ error: 'Missing uid, newPlan or newStatus' });
+    if (!uid) {
+      res.status(400).json({ error: 'Missing uid' });
       return;
     }
-    if (newPlan && !['free', 'pro'].includes(newPlan)) {
+
+    const { rows } = await query('SELECT id, email, tier, status FROM users WHERE id = $1', [uid]);
+    if (!rows[0]) { res.status(404).json({ error: 'User not found' }); return; }
+
+    const isTargetSuperadmin = rows[0].email === SUPERADMIN_EMAIL;
+
+    // --- MANEJO DE DELETE ---
+    if (req.method === 'DELETE') {
+      if (isTargetSuperadmin) {
+        res.status(403).json({ error: 'Cannot delete the superadmin' });
+        return;
+      }
+      await query('DELETE FROM users WHERE id = $1', [uid]);
+      res.status(200).json({ success: true, message: 'User deleted successfully' });
+      return;
+    }
+
+    // --- MANEJO DE PUT ---
+    if (!newPlan && !newStatus) {
+      res.status(400).json({ error: 'Missing newPlan or newStatus' });
+      return;
+    }
+    if (newPlan && !['starter', 'growth', 'pro', 'elite', 'admin'].includes(newPlan)) {
       res.status(400).json({ error: 'Invalid plan' });
       return;
     }
@@ -38,11 +60,8 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const { rows } = await query('SELECT id, email, tier, status FROM users WHERE id = $1', [uid]);
-    if (!rows[0]) { res.status(404).json({ error: 'User not found' }); return; }
-
-    if (newStatus === 'blocked' && rows[0].email === SUPERADMIN_EMAIL) {
-      res.status(403).json({ error: 'Cannot block the superadmin' });
+    if (isTargetSuperadmin) {
+      res.status(403).json({ error: 'Cannot modify the superadmin' });
       return;
     }
 

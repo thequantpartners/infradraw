@@ -77,6 +77,11 @@ const I = {
       <path d="M20 6 9 17l-5-5" />
     </svg>
   ),
+  card: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" />
+    </svg>
+  ),
 };
 
 export const Icon = I;
@@ -92,6 +97,7 @@ const NAV = [
   { key: 'projects', label: 'Proyectos', icon: 'folder' },
   { key: 'monitoring', label: 'Monitoreo', icon: 'pulse' },
   { key: 'ai', label: 'Architect AI', icon: 'spark' },
+  { key: 'plans', label: 'Planes', icon: 'card' },
   { key: 'settings', label: 'Ajustes', icon: 'gear' },
 ];
 

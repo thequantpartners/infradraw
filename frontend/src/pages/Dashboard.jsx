@@ -272,6 +272,7 @@ export default function Dashboard() {
         )}
         {nav === 'monitoring' && <MonitoringView />}
         {nav === 'ai' && <ArchitectAIView plan={plan} />}
+        {nav === 'plans' && <PlansView currentPlan={plan} onSelectPlan={(id) => { handleObStepComplete('plan', id); showToast(`Plan actualizado a ${id.toUpperCase()}`); }} />}
         {nav === 'settings' && <SettingsView session={session} plan={plan} onToast={showToast} />}
         
         {nav === 'onboarding' && (
@@ -494,46 +495,87 @@ function PlanStep({ onComplete }) {
       <div className="mb-8 text-center">
         <span className="text-[48px]">💳</span>
         <h2 className="mt-3 text-[24px] font-extrabold tracking-[-.5px] text-text">Elige tu plan</h2>
-        <p className="mt-2 text-[14px] text-muted">Empieza gratis o desbloquea todo el poder con Pro.</p>
+        <p className="mt-2 text-[14px] text-muted">Prueba cualquier plan gratis por 14 días. Cancela cuando quieras.</p>
       </div>
-      <div className="grid grid-cols-2 gap-5 max-sm:grid-cols-1">
-        {/* Free */}
+      <div className="grid grid-cols-2 gap-5 max-lg:grid-cols-1">
+        {/* Starter */}
         <button
-          onClick={() => onComplete('free')}
-          className="group relative flex flex-col rounded-2xl border border-border bg-surface/60 p-6 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-blue/50 hover:shadow-card-hover"
+          onClick={() => onComplete('starter')}
+          className="group relative flex flex-col rounded-2xl border border-border bg-surface/60 p-6 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-emerald/50 hover:shadow-card-hover"
         >
-          <div className="text-[18px] font-extrabold text-text">Free</div>
+          <div className="text-[18px] font-extrabold text-text">Starter</div>
           <div className="mt-1 text-[28px] font-extrabold tracking-[-1px] text-text">
-            $0<span className="text-[14px] font-medium text-muted">/mes</span>
+            $49<span className="text-[14px] font-medium text-muted">/mes</span>
           </div>
+          <p className="mt-2 text-[12px] text-muted">Hasta $1,000/mo en Cloud Spend</p>
           <ul className="mt-4 flex-1 space-y-2.5">
-            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> 3 proyectos</li>
-            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Editor de canvas</li>
-            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Export PNG</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Architect AI Autopilot</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Proyectos ilimitados</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Alertas Telegram</li>
           </ul>
-          <div className="mt-5 rounded-xl border border-border bg-surface2 py-3 text-center text-[14px] font-bold text-text transition-all group-hover:border-blue/50 group-hover:bg-blue/20 group-hover:text-blue">
-            Empezar gratis →
+          <div className="mt-5 rounded-xl border border-border bg-surface2 py-3 text-center text-[13px] font-bold text-text transition-all group-hover:border-emerald/50 group-hover:bg-emerald/10 group-hover:text-emerald">
+            Trial 14 días →
           </div>
         </button>
-        {/* Pro */}
+
+        {/* Growth */}
         <button
-          onClick={() => onComplete('pro')}
+          onClick={() => onComplete('growth')}
           className="group relative flex flex-col rounded-2xl border border-blue/40 bg-[linear-gradient(135deg,rgba(59,109,232,0.08),rgba(124,90,240,0.08))] p-6 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-blue/70 hover:shadow-pro-card"
         >
           <span className="absolute -top-3 right-4 rounded-full bg-grad px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-accent">
-            Recomendado
+            Most Popular
           </span>
+          <div className="text-[18px] font-extrabold text-text">Growth</div>
+          <div className="mt-1 text-[28px] font-extrabold tracking-[-1px] text-text">
+            $199<span className="text-[14px] font-medium text-muted">/mes</span>
+          </div>
+          <p className="mt-2 text-[12px] text-muted">Hasta $5,000/mo en Cloud Spend</p>
+          <ul className="mt-4 flex-1 space-y-2.5">
+            <li className="flex items-center gap-2 text-[13px] text-text"><span className="text-blue font-bold">✓</span> Todo lo de Starter</li>
+            <li className="flex items-center gap-2 text-[13px] text-text"><span className="text-blue font-bold">✓</span> Límites ampliados</li>
+            <li className="flex items-center gap-2 text-[13px] text-text"><span className="text-blue font-bold">✓</span> Soporte prioritario</li>
+          </ul>
+          <div className="mt-5 rounded-xl bg-grad py-3 text-center text-[13px] font-bold text-white shadow-accent transition-all group-hover:-translate-y-px group-hover:shadow-glow">
+            Trial 14 días →
+          </div>
+        </button>
+
+        {/* Pro */}
+        <button
+          onClick={() => onComplete('pro')}
+          className="group relative flex flex-col rounded-2xl border border-border bg-surface/60 p-6 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-card-hover"
+        >
           <div className="text-[18px] font-extrabold text-text">Pro</div>
           <div className="mt-1 text-[28px] font-extrabold tracking-[-1px] text-text">
-            $19<span className="text-[14px] font-medium text-muted">/mes</span>
+            $499<span className="text-[14px] font-medium text-muted">/mes</span>
           </div>
+          <p className="mt-2 text-[12px] text-muted">Hasta $25,000/mo en Cloud Spend</p>
           <ul className="mt-4 flex-1 space-y-2.5">
-            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Proyectos ilimitados</li>
-            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Architect AI + costos</li>
-            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Bot de Telegram</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Todo lo de Growth</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Límites masivos</li>
           </ul>
-          <div className="mt-5 rounded-xl bg-grad py-3 text-center text-[14px] font-bold text-white shadow-accent transition-all group-hover:-translate-y-px group-hover:shadow-glow">
-            Subir a Pro →
+          <div className="mt-5 rounded-xl border border-border bg-surface2 py-3 text-center text-[13px] font-bold text-text transition-all group-hover:border-accent/50 group-hover:bg-accent/10 group-hover:text-accent">
+            Trial 14 días →
+          </div>
+        </button>
+
+        {/* Elite */}
+        <button
+          onClick={() => onComplete('elite')}
+          className="group relative flex flex-col rounded-2xl border border-border bg-surface/60 p-6 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-white/50 hover:shadow-card-hover"
+        >
+          <div className="text-[18px] font-extrabold text-text">Elite</div>
+          <div className="mt-1 text-[28px] font-extrabold tracking-[-1px] text-text">
+            Custom
+          </div>
+          <p className="mt-2 text-[12px] text-muted">Cloud Spend personalizado</p>
+          <ul className="mt-4 flex-1 space-y-2.5">
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Todo lo de Pro</li>
+            <li className="flex items-center gap-2 text-[13px] text-muted"><span className="text-emerald">✓</span> Dedicated Manager</li>
+          </ul>
+          <div className="mt-5 rounded-xl border border-border bg-surface2 py-3 text-center text-[13px] font-bold text-text transition-all hover:bg-surface2">
+            Contactar Ventas →
           </div>
         </button>
       </div>
@@ -699,6 +741,21 @@ function AIStep({ onComplete }) {
           {busy ? 'Generando estrategia...' : 'Generar setup →'}
         </button>
       </div>
+    </div>
+  );
+}
+
+function PlansView({ currentPlan, onSelectPlan }) {
+  return (
+    <div className="animate-fadeIn">
+      <header className="mb-8">
+        <h1 className="text-[20px] font-extrabold tracking-[-.5px] text-text max-md:text-[18px]">Planes y Suscripción</h1>
+        <p className="mt-0.5 text-[13px] text-muted">Gestiona tu nivel de Cloud Spend y desbloquea el Autopilot.</p>
+      </header>
+      <div className="mb-6 rounded-xl border border-blue/20 bg-blue/5 p-4">
+        <div className="text-[13px] font-semibold text-blue">Tu plan actual es: {currentPlan.toUpperCase()}</div>
+      </div>
+      <PlanStep onComplete={onSelectPlan} />
     </div>
   );
 }

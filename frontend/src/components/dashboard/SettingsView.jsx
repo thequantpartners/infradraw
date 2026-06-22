@@ -67,14 +67,14 @@ function IntegrationHeader({ logo, name, connected }) {
   );
 }
 
-export default function SettingsView({ session, plan = 'free', onToast }) {
+export default function SettingsView({ session, plan = 'starter', onToast }) {
   const [name, setName] = useState(session?.name || '');
   const [email, setEmail] = useState(session?.email || '');
   const [gcpProject, setGcpProject] = useState('infradraw-prod-01');
   const [gcpKey, setGcpKey] = useState('');
   const [tgToken, setTgToken] = useState('');
 
-  const isPro = plan === 'pro';
+  const isPaid = plan !== 'free' && plan !== 'starter';
   const save = (msg) => onToast?.(msg);
   const initial = (name || session?.name || 'U')[0]?.toUpperCase();
 
@@ -115,7 +115,7 @@ export default function SettingsView({ session, plan = 'free', onToast }) {
           {/* Integraciones */}
           <Panel title="Integraciones">
             <div className="rounded-xl border border-border bg-surface2/40 p-4">
-              <IntegrationHeader logo="☁️" name="Google Cloud" connected={isPro} />
+              <IntegrationHeader logo="☁️" name="Google Cloud" connected={true} />
               <div className="flex flex-col gap-3">
                 <Field
                   label="Project ID"
@@ -136,7 +136,7 @@ export default function SettingsView({ session, plan = 'free', onToast }) {
             </div>
 
             <div className="mt-4 rounded-xl border border-border bg-surface2/40 p-4">
-              <IntegrationHeader logo="✈️" name="Bot de Telegram" connected={isPro} />
+              <IntegrationHeader logo="✈️" name="Bot de Telegram" connected={true} />
               <SecretField
                 label="Token del bot"
                 value={tgToken}
@@ -160,15 +160,15 @@ export default function SettingsView({ session, plan = 'free', onToast }) {
               <span
                 className={[
                   'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold uppercase tracking-wider',
-                  isPro ? 'border border-blue/35 bg-blue/15 text-blue' : 'border border-muted/20 bg-muted/10 text-muted',
+                  'border border-blue/35 bg-blue/15 text-blue'
                 ].join(' ')}
               >
-                {isPro ? '⭐ PRO' : 'FREE'}
+                {plan === 'free' ? 'TRIAL 14 DÍAS' : plan.toUpperCase()}
               </span>
               <div className="min-w-0">
-                <div className="text-[14px] font-bold text-text">{isPro ? 'Plan Pro' : 'Plan Free'}</div>
+                <div className="text-[14px] font-bold text-text">Plan {plan === 'free' ? 'Starter (Trial)' : plan.charAt(0).toUpperCase() + plan.slice(1)}</div>
                 <div className="text-[12px] text-muted">
-                  {isPro ? 'Renovación el 21 jul 2026' : '3 proyectos · funciones básicas'}
+                  Renovación el 21 jul 2026
                 </div>
               </div>
             </div>
@@ -180,27 +180,18 @@ export default function SettingsView({ session, plan = 'free', onToast }) {
                 'Bot de Telegram y Autopilot',
               ].map((f) => (
                 <li key={f} className="flex items-center gap-2 text-muted">
-                  <span className={isPro ? 'text-emerald' : 'text-dim'}>{isPro ? '✓' : '○'}</span>
+                  <span className="text-emerald">✓</span>
                   {f}
                 </li>
               ))}
             </ul>
 
-            {isPro ? (
-              <button
-                onClick={() => save('Abriendo portal de facturación…')}
-                className="mt-5 block w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-center text-[13px] font-bold text-text transition-colors hover:border-blue hover:text-blue"
-              >
-                Gestionar suscripción
-              </button>
-            ) : (
-              <a
-                href="/#pricing"
-                className="mt-5 block rounded-xl bg-grad py-2.5 text-center text-[13px] font-bold text-white shadow-accent transition-all hover:-translate-y-px hover:shadow-accent-hover"
-              >
-                Subir a Pro →
-              </a>
-            )}
+            <button
+              onClick={() => save('Abriendo portal de facturación…')}
+              className="mt-5 block w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-center text-[13px] font-bold text-text transition-colors hover:border-blue hover:text-blue"
+            >
+              Gestionar suscripción
+            </button>
           </Panel>
 
           <Panel title="Preferencias">

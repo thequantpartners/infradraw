@@ -173,7 +173,11 @@
     text-transform: uppercase;
   }
   .plan-badge.free { background: rgba(122, 146, 180, 0.1); border: 1px solid rgba(122, 146, 180, 0.2); color: var(--muted); }
+  .plan-badge.starter { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: var(--green); }
+  .plan-badge.growth { background: rgba(124, 90, 240, 0.15); border: 1px solid rgba(124, 90, 240, 0.35); color: #7c5af0; }
   .plan-badge.pro  { background: rgba(79, 140, 255, 0.15); border: 1px solid rgba(79, 140, 255, 0.35); color: var(--accent); }
+  .plan-badge.elite { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: var(--danger); }
+  .plan-badge.admin { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: white; }
 
   .action-btn {
     background: var(--panel-2);
@@ -186,7 +190,21 @@
     cursor: pointer;
     transition: all 0.2s;
   }
-  .action-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(79, 140, 255, 0.05); }
+  .action-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: rgba(79, 140, 255, 0.05); }
+  .action-btn.delete:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.05); }
+  
+  .plan-select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    outline: none;
+  }
+  .plan-select:hover { border-color: var(--accent); }
 
   .error-banner {
     background: rgba(239, 68, 68, 0.1);
@@ -273,8 +291,7 @@ function AdminApp() {
     }
   }, []);
 
-  function togglePlan(uid, currentPlan) {
-    var newPlan = currentPlan === 'free' ? 'pro' : 'free';
+  function updatePlan(uid, newPlan) {
     fetch('/api/admin/user', {
       method: 'PUT',
       headers: authHeaders(),
@@ -290,6 +307,23 @@ function AdminApp() {
         });
       })
       .catch(function (err) { alert('Error updating plan: ' + err.message); });
+  }
+
+  function deleteUser(uid) {
+    if (!confirm('¿Estás seguro de que quieres eliminar a este usuario de forma permanente?')) return;
+    fetch('/api/admin/user', {
+      method: 'DELETE',
+      headers: authHeaders(),
+      body: JSON.stringify({ uid: uid })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        setUsers(function(prev) {
+          return prev.filter(function(u) { return u.uid !== uid; });
+        });
+      })
+      .catch(function (err) { alert('Error deleting user: ' + err.message); });
   }
 
   function toggleStatus(uid, currentStatus) {
@@ -329,31 +363,43 @@ function AdminApp() {
   } else if (error) {
     mainContent = h('div', { className: 'error-banner' }, 'Error: ' + error);
   } else {
-    var rows = users.map(function(user) {
-      return h('tr', { key: user.uid }, [
-        h('td', { key: 'user' }, [
-          h('div', { key: 'name', style: { fontWeight: 600 } }, user.name || 'Sin nombre'),
-          h('div', { key: 'email', className: 'user-email' }, user.email)
-        ]),
-        h('td', { key: 'plan' }, h('span', { className: 'plan-badge ' + (user.plan || 'free') }, user.plan === 'pro' ? '⭐ PRO' : 'FREE')),
-        h('td', { key: 'status' }, h('span', { className: 'plan-badge ' + (user.status === 'blocked' ? 'free' : 'pro'), style: user.status === 'blocked' ? { borderColor: 'var(--danger)', color: 'var(--danger)' } : {} }, user.status === 'blocked' ? 'BLOCKED' : 'ACTIVE')),
-        h('td', { key: 'date' }, new Date(user.createdAt).toLocaleDateString()),
-        h('td', { key: 'actions', style: { display: 'flex', gap: '8px' } }, [
-          h('button', {
-            key: 'plan-btn',
-            className: 'action-btn',
-            onClick: function() { togglePlan(user.uid, user.plan || 'free'); }
-          }, user.plan === 'pro' ? 'Downgrade to FREE' : 'Upgrade to PRO'),
-          h('button', {
-            key: 'block-btn',
-            className: 'action-btn',
-            style: user.email === window.__INFRADRAW_USER_EMAIL ? { opacity: 0.5, cursor: 'not-allowed' } : {},
-            disabled: user.email === window.__INFRADRAW_USER_EMAIL,
-            onClick: function() { toggleStatus(user.uid, user.status || 'active'); }
-          }, user.status === 'blocked' ? 'Unblock' : 'Block')
-        ])
-      ]);
-    });
+      var rows = users.map(function(user) {
+        var isSuperadmin = user.email === 'thequantpartners@gmail.com';
+        var planName = isSuperadmin ? 'admin' : (user.plan || 'starter');
+        
+        return h('tr', { key: user.uid }, [
+          h('td', { key: 'user' }, [
+            h('div', { key: 'name', style: { fontWeight: 600 } }, user.name || 'Sin nombre'),
+            h('div', { key: 'email', className: 'user-email' }, user.email)
+          ]),
+          h('td', { key: 'plan' }, h('span', { className: 'plan-badge ' + planName }, planName.toUpperCase())),
+          h('td', { key: 'status' }, h('span', { className: 'plan-badge ' + (user.status === 'blocked' ? 'free' : 'pro'), style: user.status === 'blocked' ? { borderColor: 'var(--danger)', color: 'var(--danger)' } : {} }, user.status === 'blocked' ? 'BLOCKED' : 'ACTIVE')),
+          h('td', { key: 'date' }, new Date(user.createdAt).toLocaleDateString()),
+          h('td', { key: 'actions', style: { display: 'flex', gap: '8px' } }, isSuperadmin ? [] : [
+            h('select', {
+              key: 'plan-select',
+              className: 'plan-select',
+              value: user.plan || 'starter',
+              onChange: function(e) { updatePlan(user.uid, e.target.value); }
+            }, [
+              h('option', { value: 'starter' }, 'Starter'),
+              h('option', { value: 'growth' }, 'Growth'),
+              h('option', { value: 'pro' }, 'Pro'),
+              h('option', { value: 'elite' }, 'Elite')
+            ]),
+            h('button', {
+              key: 'block-btn',
+              className: 'action-btn',
+              onClick: function() { toggleStatus(user.uid, user.status || 'active'); }
+            }, user.status === 'blocked' ? 'Unblock' : 'Block'),
+            h('button', {
+              key: 'delete-btn',
+              className: 'action-btn delete',
+              onClick: function() { deleteUser(user.uid); }
+            }, 'Delete')
+          ])
+        ]);
+      });
 
     mainContent = h('div', { className: 'admin-table-container' },
       h('table', null, [
